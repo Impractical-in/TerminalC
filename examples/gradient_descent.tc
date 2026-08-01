@@ -1,0 +1,12 @@
+# One transparent gradient-descent step for f(w) = (w - target)^2.
+# Change target, learning_rate, and weight to explore the update.
+target = 3
+learning_rate = 1/10
+weight = 0
+gradient = 2 * (weight - target)
+next_weight = weight - learning_rate * gradient
+loss_before = (weight - target)^2
+loss_after = (next_weight - target)^2
+next_weight
+loss_before
+loss_after

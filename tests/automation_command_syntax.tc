@@ -1,0 +1,2 @@
+# Malformed command-only syntax must fail automation.
+degree(

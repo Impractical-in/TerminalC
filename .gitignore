@@ -1,0 +1,54 @@
+# Build trees & binaries
+/build/
+/build-*/
+/cmake-build-*/
+/out/
+/dist/
+/wheel_smoke_*/
+/TerminalC-*.zip
+/_CPack_Packages/
+*.o
+*.obj
+*.a
+*.lib
+*.exe
+*.dll
+*.so
+*.dylib
+*.exp
+*.pdb
+*.ilk
+
+# CMake / CTest noise (if configured in-source)
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+DartConfiguration.tcl
+Testing/
+Makefile
+compile_commands.json
+CMakeUserPresets.json
+
+# Compiler / local scratch
+gcc_*.txt
+pp_err.txt
+*.log
+*.tmp
+*~
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python packaging (optional wheel path)
+.venv/
+*.egg-info/
+__pycache__/
+.pytest_cache/

@@ -1,0 +1,3 @@
+# Invalid REPL commands must fail automation, not silently continue.
+help missing_topic
+2+2

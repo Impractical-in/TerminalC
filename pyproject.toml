@@ -1,0 +1,27 @@
+[build-system]
+requires = ["scikit-build-core>=0.10"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "terminalc"
+# PEP 440 spelling of the Git/release identifier v1.0.0-beta.1.
+version = "1.0.0b1"
+description = "Arbitrary-precision terminal calculator written in C (GMP + MPFR)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[project.scripts]
+terminalc = "terminalc._launcher:main"
+
+[tool.scikit-build]
+cmake.version = ">=3.20"
+wheel.packages = ["python/terminalc"]
+
+[tool.scikit-build.cmake.define]
+TERMINALC_PYTHON_WHEEL = "ON"
+
+# Release CI must provide GMP/MPFR and build platform wheels. The CMake install
+# target supplies the native terminalc executable and (on MinGW Windows) its
+# runtime DLLs under a private wheel directory so pip's `terminalc` launcher
+# cannot collide with it; the small Python shim only forwards arguments/stdin.

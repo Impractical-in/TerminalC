@@ -1,0 +1,10 @@
+# Engineering cost estimate: exact arithmetic keeps the final amount auditable.
+precision 12
+material_cost = 125/10
+quantity = 8
+waste_factor = 105/100
+labor_hours = 14
+labor_rate = 375/10
+material_total = material_cost * quantity * waste_factor
+labor_total = labor_hours * labor_rate
+material_total + labor_total

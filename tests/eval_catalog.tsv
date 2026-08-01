@@ -1,0 +1,715 @@
+# TerminalC eval catalog — TAB-separated: name<TAB>expr<TAB>regex<TAB>options
+# options: p=N (precision), fail (expect exit 1), err (match stderr)
+# Auto-maintained bulk cases + hand-curated edges. Do not use spaces instead of tabs.
+add_0_0	0+0	^0$
+add_0_1	0+1	^1$
+add_0_2	0+2	^2$
+add_0_3	0+3	^3$
+add_0_4	0+4	^4$
+add_0_5	0+5	^5$
+add_0_6	0+6	^6$
+add_0_7	0+7	^7$
+add_0_8	0+8	^8$
+add_0_9	0+9	^9$
+add_0_10	0+10	^10$
+add_0_11	0+11	^11$
+add_0_12	0+12	^12$
+add_1_0	1+0	^1$
+add_1_1	1+1	^2$
+add_1_2	1+2	^3$
+add_1_3	1+3	^4$
+add_1_4	1+4	^5$
+add_1_5	1+5	^6$
+add_1_6	1+6	^7$
+add_1_7	1+7	^8$
+add_1_8	1+8	^9$
+add_1_9	1+9	^10$
+add_1_10	1+10	^11$
+add_1_11	1+11	^12$
+add_1_12	1+12	^13$
+add_2_0	2+0	^2$
+add_2_1	2+1	^3$
+add_2_2	2+2	^4$
+add_2_3	2+3	^5$
+add_2_4	2+4	^6$
+add_2_5	2+5	^7$
+add_2_6	2+6	^8$
+add_2_7	2+7	^9$
+add_2_8	2+8	^10$
+add_2_9	2+9	^11$
+add_2_10	2+10	^12$
+add_2_11	2+11	^13$
+add_2_12	2+12	^14$
+add_3_0	3+0	^3$
+add_3_1	3+1	^4$
+add_3_2	3+2	^5$
+add_3_3	3+3	^6$
+add_3_4	3+4	^7$
+add_3_5	3+5	^8$
+add_3_6	3+6	^9$
+add_3_7	3+7	^10$
+add_3_8	3+8	^11$
+add_3_9	3+9	^12$
+add_3_10	3+10	^13$
+add_3_11	3+11	^14$
+add_3_12	3+12	^15$
+add_4_0	4+0	^4$
+add_4_1	4+1	^5$
+add_4_2	4+2	^6$
+add_4_3	4+3	^7$
+add_4_4	4+4	^8$
+add_4_5	4+5	^9$
+add_4_6	4+6	^10$
+add_4_7	4+7	^11$
+add_4_8	4+8	^12$
+add_4_9	4+9	^13$
+add_4_10	4+10	^14$
+add_4_11	4+11	^15$
+add_4_12	4+12	^16$
+add_5_0	5+0	^5$
+add_5_1	5+1	^6$
+add_5_2	5+2	^7$
+add_5_3	5+3	^8$
+add_5_4	5+4	^9$
+add_5_5	5+5	^10$
+add_5_6	5+6	^11$
+add_5_7	5+7	^12$
+add_5_8	5+8	^13$
+add_5_9	5+9	^14$
+add_5_10	5+10	^15$
+add_5_11	5+11	^16$
+add_5_12	5+12	^17$
+add_6_0	6+0	^6$
+add_6_1	6+1	^7$
+add_6_2	6+2	^8$
+add_6_3	6+3	^9$
+add_6_4	6+4	^10$
+add_6_5	6+5	^11$
+add_6_6	6+6	^12$
+add_6_7	6+7	^13$
+add_6_8	6+8	^14$
+add_6_9	6+9	^15$
+add_6_10	6+10	^16$
+add_6_11	6+11	^17$
+add_6_12	6+12	^18$
+add_7_0	7+0	^7$
+add_7_1	7+1	^8$
+add_7_2	7+2	^9$
+add_7_3	7+3	^10$
+add_7_4	7+4	^11$
+add_7_5	7+5	^12$
+add_7_6	7+6	^13$
+add_7_7	7+7	^14$
+add_7_8	7+8	^15$
+add_7_9	7+9	^16$
+add_7_10	7+10	^17$
+add_7_11	7+11	^18$
+add_7_12	7+12	^19$
+add_8_0	8+0	^8$
+add_8_1	8+1	^9$
+add_8_2	8+2	^10$
+add_8_3	8+3	^11$
+add_8_4	8+4	^12$
+add_8_5	8+5	^13$
+add_8_6	8+6	^14$
+add_8_7	8+7	^15$
+add_8_8	8+8	^16$
+add_8_9	8+9	^17$
+add_8_10	8+10	^18$
+add_8_11	8+11	^19$
+add_8_12	8+12	^20$
+add_9_0	9+0	^9$
+add_9_1	9+1	^10$
+add_9_2	9+2	^11$
+add_9_3	9+3	^12$
+add_9_4	9+4	^13$
+add_9_5	9+5	^14$
+add_9_6	9+6	^15$
+add_9_7	9+7	^16$
+add_9_8	9+8	^17$
+add_9_9	9+9	^18$
+add_9_10	9+10	^19$
+add_9_11	9+11	^20$
+add_9_12	9+12	^21$
+add_10_0	10+0	^10$
+add_10_1	10+1	^11$
+add_10_2	10+2	^12$
+add_10_3	10+3	^13$
+add_10_4	10+4	^14$
+add_10_5	10+5	^15$
+add_10_6	10+6	^16$
+add_10_7	10+7	^17$
+add_10_8	10+8	^18$
+add_10_9	10+9	^19$
+add_10_10	10+10	^20$
+add_10_11	10+11	^21$
+add_10_12	10+12	^22$
+add_11_0	11+0	^11$
+add_11_1	11+1	^12$
+add_11_2	11+2	^13$
+add_11_3	11+3	^14$
+add_11_4	11+4	^15$
+add_11_5	11+5	^16$
+add_11_6	11+6	^17$
+add_11_7	11+7	^18$
+add_11_8	11+8	^19$
+add_11_9	11+9	^20$
+add_11_10	11+10	^21$
+add_11_11	11+11	^22$
+add_11_12	11+12	^23$
+add_12_0	12+0	^12$
+add_12_1	12+1	^13$
+add_12_2	12+2	^14$
+add_12_3	12+3	^15$
+add_12_4	12+4	^16$
+add_12_5	12+5	^17$
+add_12_6	12+6	^18$
+add_12_7	12+7	^19$
+add_12_8	12+8	^20$
+add_12_9	12+9	^21$
+add_12_10	12+10	^22$
+add_12_11	12+11	^23$
+add_12_12	12+12	^24$
+mul_0_0	0*0	^0$
+mul_0_1	0*1	^0$
+mul_0_2	0*2	^0$
+mul_0_3	0*3	^0$
+mul_0_4	0*4	^0$
+mul_0_5	0*5	^0$
+mul_0_6	0*6	^0$
+mul_0_7	0*7	^0$
+mul_0_8	0*8	^0$
+mul_0_9	0*9	^0$
+mul_0_10	0*10	^0$
+mul_1_0	1*0	^0$
+mul_1_1	1*1	^1$
+mul_1_2	1*2	^2$
+mul_1_3	1*3	^3$
+mul_1_4	1*4	^4$
+mul_1_5	1*5	^5$
+mul_1_6	1*6	^6$
+mul_1_7	1*7	^7$
+mul_1_8	1*8	^8$
+mul_1_9	1*9	^9$
+mul_1_10	1*10	^10$
+mul_2_0	2*0	^0$
+mul_2_1	2*1	^2$
+mul_2_2	2*2	^4$
+mul_2_3	2*3	^6$
+mul_2_4	2*4	^8$
+mul_2_5	2*5	^10$
+mul_2_6	2*6	^12$
+mul_2_7	2*7	^14$
+mul_2_8	2*8	^16$
+mul_2_9	2*9	^18$
+mul_2_10	2*10	^20$
+mul_3_0	3*0	^0$
+mul_3_1	3*1	^3$
+mul_3_2	3*2	^6$
+mul_3_3	3*3	^9$
+mul_3_4	3*4	^12$
+mul_3_5	3*5	^15$
+mul_3_6	3*6	^18$
+mul_3_7	3*7	^21$
+mul_3_8	3*8	^24$
+mul_3_9	3*9	^27$
+mul_3_10	3*10	^30$
+mul_4_0	4*0	^0$
+mul_4_1	4*1	^4$
+mul_4_2	4*2	^8$
+mul_4_3	4*3	^12$
+mul_4_4	4*4	^16$
+mul_4_5	4*5	^20$
+mul_4_6	4*6	^24$
+mul_4_7	4*7	^28$
+mul_4_8	4*8	^32$
+mul_4_9	4*9	^36$
+mul_4_10	4*10	^40$
+mul_5_0	5*0	^0$
+mul_5_1	5*1	^5$
+mul_5_2	5*2	^10$
+mul_5_3	5*3	^15$
+mul_5_4	5*4	^20$
+mul_5_5	5*5	^25$
+mul_5_6	5*6	^30$
+mul_5_7	5*7	^35$
+mul_5_8	5*8	^40$
+mul_5_9	5*9	^45$
+mul_5_10	5*10	^50$
+mul_6_0	6*0	^0$
+mul_6_1	6*1	^6$
+mul_6_2	6*2	^12$
+mul_6_3	6*3	^18$
+mul_6_4	6*4	^24$
+mul_6_5	6*5	^30$
+mul_6_6	6*6	^36$
+mul_6_7	6*7	^42$
+mul_6_8	6*8	^48$
+mul_6_9	6*9	^54$
+mul_6_10	6*10	^60$
+mul_7_0	7*0	^0$
+mul_7_1	7*1	^7$
+mul_7_2	7*2	^14$
+mul_7_3	7*3	^21$
+mul_7_4	7*4	^28$
+mul_7_5	7*5	^35$
+mul_7_6	7*6	^42$
+mul_7_7	7*7	^49$
+mul_7_8	7*8	^56$
+mul_7_9	7*9	^63$
+mul_7_10	7*10	^70$
+mul_8_0	8*0	^0$
+mul_8_1	8*1	^8$
+mul_8_2	8*2	^16$
+mul_8_3	8*3	^24$
+mul_8_4	8*4	^32$
+mul_8_5	8*5	^40$
+mul_8_6	8*6	^48$
+mul_8_7	8*7	^56$
+mul_8_8	8*8	^64$
+mul_8_9	8*9	^72$
+mul_8_10	8*10	^80$
+mul_9_0	9*0	^0$
+mul_9_1	9*1	^9$
+mul_9_2	9*2	^18$
+mul_9_3	9*3	^27$
+mul_9_4	9*4	^36$
+mul_9_5	9*5	^45$
+mul_9_6	9*6	^54$
+mul_9_7	9*7	^63$
+mul_9_8	9*8	^72$
+mul_9_9	9*9	^81$
+mul_9_10	9*10	^90$
+mul_10_0	10*0	^0$
+mul_10_1	10*1	^10$
+mul_10_2	10*2	^20$
+mul_10_3	10*3	^30$
+mul_10_4	10*4	^40$
+mul_10_5	10*5	^50$
+mul_10_6	10*6	^60$
+mul_10_7	10*7	^70$
+mul_10_8	10*8	^80$
+mul_10_9	10*9	^90$
+mul_10_10	10*10	^100$
+sub_0_3	0-3	^-3$
+sub_1_3	1-3	^-2$
+sub_2_3	2-3	^-1$
+sub_3_3	3-3	^0$
+sub_4_3	4-3	^1$
+sub_5_3	5-3	^2$
+sub_6_3	6-3	^3$
+sub_7_3	7-3	^4$
+sub_8_3	8-3	^5$
+sub_9_3	9-3	^6$
+sub_10_3	10-3	^7$
+prec_mul_add	2+3*4	^14$
+prec_paren	(2+3)*4	^20$
+prec_sub_add	10-3-2	^5$
+prec_div_mul	8/2*4	^16$
+pow_right_assoc	2^3^2	^512$
+pow_paren_left	(2^3)^2	^64$
+pow_zero	5^0	^1$
+unary_double_neg	-(-7)	^7$
+unary_neg_sum	-(2+3)	^-5$
+op_boundary	10-8+7*9	^65$
+nested_paren	((1+2)*(3+4))	^21$
+chain_add	1+2+3+4+5	^15$
+chain_mul	2*3*4	^24$
+rat_sum	1/2+1/3	5/6
+rat_13_21	1/3+2/7	13/21
+rat_cancel	2/4	^Exact:  1/2|1/2
+rat_mul	2/3*3/4	1/2
+rat_div	(1/2)/(1/4)	^2$
+int_div	8/2	^4$
+sci_1	1.25e-3*8	1/100	p=6
+sci_2	1e3	1000|1/1|Exact
+sci_3	2.5e1	25
+bool_t	true	^true$
+bool_f	false	^false$
+bool_gt	3>2	^true$
+bool_lt	3<2	^false$
+bool_ge	3>=3	^true$
+bool_le	2<=3	^true$
+bool_eq	1==1	^true$
+bool_ne	1!=2	^true$
+bool_ne_f	1!=1	^false$
+bool_and_tt	true and true	^true$
+bool_and_tf	true and false	^false$
+bool_or_tf	true or false	^true$
+bool_or_ff	false or false	^false$
+bool_not_t	not true	^false$
+bool_not_f	not false	^true$
+bool_bang	!false	^true$
+bool_amp	true && true	^true$
+bool_pipe	false || true	^true$
+bool_chain	1<2 and 3<4	^true$
+bool_if_t	if(1<2, 10, 20)	^10$
+bool_if_f	if(2<1, 10, 20)	^20$
+bool_if_num	if(0, 1, 2)	^2$
+bool_cmp_pi	pi>3	^true$
+bool_eq_rat	1/2==0.5	^true$
+cmp_gt_1_1	1>1	^false$
+cmp_lt_1_1	1<1	^false$
+cmp_eq_1_1	1==1	^true$
+cmp_gt_1_2	1>2	^false$
+cmp_lt_1_2	1<2	^true$
+cmp_eq_1_2	1==2	^false$
+cmp_gt_1_5	1>5	^false$
+cmp_lt_1_5	1<5	^true$
+cmp_eq_1_5	1==5	^false$
+cmp_gt_1_10	1>10	^false$
+cmp_lt_1_10	1<10	^true$
+cmp_eq_1_10	1==10	^false$
+cmp_gt_2_1	2>1	^true$
+cmp_lt_2_1	2<1	^false$
+cmp_eq_2_1	2==1	^false$
+cmp_gt_2_2	2>2	^false$
+cmp_lt_2_2	2<2	^false$
+cmp_eq_2_2	2==2	^true$
+cmp_gt_2_5	2>5	^false$
+cmp_lt_2_5	2<5	^true$
+cmp_eq_2_5	2==5	^false$
+cmp_gt_2_10	2>10	^false$
+cmp_lt_2_10	2<10	^true$
+cmp_eq_2_10	2==10	^false$
+cmp_gt_5_1	5>1	^true$
+cmp_lt_5_1	5<1	^false$
+cmp_eq_5_1	5==1	^false$
+cmp_gt_5_2	5>2	^true$
+cmp_lt_5_2	5<2	^false$
+cmp_eq_5_2	5==2	^false$
+cmp_gt_5_5	5>5	^false$
+cmp_lt_5_5	5<5	^false$
+cmp_eq_5_5	5==5	^true$
+cmp_gt_5_10	5>10	^false$
+cmp_lt_5_10	5<10	^true$
+cmp_eq_5_10	5==10	^false$
+cmp_gt_10_1	10>1	^true$
+cmp_lt_10_1	10<1	^false$
+cmp_eq_10_1	10==1	^false$
+cmp_gt_10_2	10>2	^true$
+cmp_lt_10_2	10<2	^false$
+cmp_eq_10_2	10==2	^false$
+cmp_gt_10_5	10>5	^true$
+cmp_lt_10_5	10<5	^false$
+cmp_eq_10_5	10==5	^false$
+cmp_gt_10_10	10>10	^false$
+cmp_lt_10_10	10<10	^false$
+cmp_eq_10_10	10==10	^true$
+hex_lit	0xFF	^255$
+hex_lit_10	0x10	^16$
+bin_lit	0b1010	^10$
+bin_lit_1111	0b1111	^15$
+oct_lit	0o10	^8$
+oct_lit_77	0o77	^63$
+hex_disp	hex(255)	0xFF
+hex_disp_0	hex(0)	0x0
+bin_disp	bin(10)	0b1010
+oct_disp	oct(64)	0o100
+base16	base(255,16)	0xFF
+base2	base(7,2)	0b111
+base_mixed	0x10+0b10+0o10	^26$
+hex_sum	0xA+0x6	^16$
+hex_roundtrip_0	hex(0)	0x0
+hex_roundtrip_1	hex(1)	0x1
+hex_roundtrip_2	hex(2)	0x2
+hex_roundtrip_3	hex(3)	0x3
+hex_roundtrip_4	hex(4)	0x4
+hex_roundtrip_5	hex(5)	0x5
+hex_roundtrip_6	hex(6)	0x6
+hex_roundtrip_7	hex(7)	0x7
+hex_roundtrip_8	hex(8)	0x8
+hex_roundtrip_9	hex(9)	0x9
+hex_roundtrip_10	hex(10)	0xA
+hex_roundtrip_11	hex(11)	0xB
+hex_roundtrip_12	hex(12)	0xC
+hex_roundtrip_13	hex(13)	0xD
+hex_roundtrip_14	hex(14)	0xE
+hex_roundtrip_15	hex(15)	0xF
+hex_roundtrip_16	hex(16)	0x10
+hex_roundtrip_17	hex(17)	0x11
+hex_roundtrip_18	hex(18)	0x12
+hex_roundtrip_19	hex(19)	0x13
+hex_roundtrip_20	hex(20)	0x14
+hex_roundtrip_21	hex(21)	0x15
+hex_roundtrip_22	hex(22)	0x16
+hex_roundtrip_23	hex(23)	0x17
+hex_roundtrip_24	hex(24)	0x18
+hex_roundtrip_25	hex(25)	0x19
+hex_roundtrip_26	hex(26)	0x1A
+hex_roundtrip_27	hex(27)	0x1B
+hex_roundtrip_28	hex(28)	0x1C
+hex_roundtrip_29	hex(29)	0x1D
+hex_roundtrip_30	hex(30)	0x1E
+hex_roundtrip_31	hex(31)	0x1F
+hex_roundtrip_32	hex(32)	0x20
+gcd_1	gcd(12,18)	^6$
+gcd_2	gcd(17,13)	^1$
+gcd_3	gcd(100,25)	^25$
+gcd_0	gcd(0,5)	^5$
+lcm_1	lcm(3,6)	^6$
+lcm_2	lcm(4,6)	^12$
+lcm_3	lcm(7,3)	^21$
+fact_0	fact(0)	^1$
+fact_1	fact(1)	^1$
+fact_5	fact(5)	^120$
+factorial_alias	factorial(5)	^120$
+fact_10	fact(10)	^3628800$
+fact_12	fact(12)	^479001600$
+ncr_1	ncr(5,2)	^10$
+ncr_2	choose(10,3)	^120$
+ncr_3	ncr(6,0)	^1$
+ncr_4	ncr(6,6)	^1$
+ncr_n1_0	ncr(0,1)	^0$
+ncr_n1_1	ncr(1,1)	^1$
+ncr_n1_2	ncr(2,1)	^2$
+ncr_n1_3	ncr(3,1)	^3$
+ncr_n1_4	ncr(4,1)	^4$
+ncr_n1_5	ncr(5,1)	^5$
+ncr_n1_6	ncr(6,1)	^6$
+ncr_n1_7	ncr(7,1)	^7$
+ncr_n1_8	ncr(8,1)	^8$
+abs_neg	abs(-5)	^5$
+abs_pos	abs(5)	^5$
+abs_0	abs(0)	^0$
+abs_measure	abs(-5*m)	5 m
+sqrt_9	sqrt(9)	^3$
+sqrt_0	sqrt(0)	^0$
+sqrt_4	sqrt(4)	^2$
+nthroot_16_4	nthroot(16,4)	^2$
+nthroot_negative_8_3	nthroot(-8,3)	^-2$
+nroot_alias	nroot(27,3)	^3$
+nthroot_tensor	nthroot([1,8,27],3)	3-vector
+nthroot_prec	nthroot(2,3)	1\.2599210498948731647672106	p=40
+log_1000	log(1000)	^3$
+log_100	log(100)	^2$
+log_10	log(10)	^1$
+ln_1	ln(1)	^0$
+exp_0	exp(0)	^1$
+floor_1	floor(2.9)	^2$
+ceil_1	ceil(2.1)	^3$
+floor_neg	floor(-1.2)	^-2$
+sin_0	sin(0)	^0$
+cos_0	cos(0)	^1$
+tan_0	tan(0)	^0$
+sin_pi6	sin(pi/6)	1/2
+cos_pi3	cos(pi/3)	1/2
+asin_1	asin(1)	1\.5708
+atan2_1_1	atan2(1,1)	0\.7854
+tanh_0	tanh(0)	^0$
+log2_8	log2(8)	^3$
+log1p_1	log1p(1)	0\.6931
+expm1_0	expm1(0)	^0$
+cbrt_27	cbrt(27)	^3$
+pow_fn	pow(2,10)	^1024$
+logb_8_2	logb(8,2)	^3$
+logn_1000_10	logn(1000,10)	^3$
+log_base_16_2	log_base(16,2)	^4$
+erf_0	erf(0)	^0$
+erf_1	erf(1)	0\.8427
+erfc_0	erfc(0)	^1$
+gamma_5	gamma(5)	^24$
+lgamma_1	lgamma(1)	^0$
+ramanujan_pi_default	ramanujan_pi()	3\.1416
+ramanujan_pi_prec	ramanujan_pi()	3\.1415926535897932384626433832795	p=40
+err_ramanujan_pi_args	ramanujan_pi(1)	unknown function or invalid argument count/type	fail,err
+sigmoid_0	sigmoid(0)	1/2
+logistic_alias	logistic(0)	1/2
+softplus_0	softplus(0)	0\.6931
+logit_half	logit(1/2)	^0$
+relu_neg	relu(-2)	^0$
+sign_neg	sign(-7)	^-1$
+min_scalars	min(4,2,9)	^2$
+max_tensor	max([1,5,3])	^5$
+max_single_tensor	max([7])	^7$
+clamp_high	clamp(12,0,10)	^10$
+mean_scalars	mean(1,2,3)	^2$
+variance_tensor	variance([1,2,3])	2/3
+stddev_tensor	stddev([1,2,3])	0\.8165
+norm_tensor	norm([3,4])	^5$
+median_tensor	median([1,5,2])	^2$
+quantile_75	quantile([1,2,3,4],0.75)	3\.25
+percentile_25	percentile([1,2,3,4],0.25)	1\.75
+covariance_linear	covariance([1,2,3],[2,4,6])	1\.3333
+correlation_linear	correlation([1,2,3],[2,4,6])	^1$
+cov_alias	cov([1,2,3],[2,4,6])	1\.3333
+err_quantile_range	quantile([1,2,3],2)	between 0 and 1	fail,err
+err_correlation_constant	correlation([1,1],[2,3])	correlation is undefined	fail,err
+sqrt2_prec50	sqrt(2)	1\.41421356237309504880	p=50
+sqrt2_default	sqrt(2)	1\.4142
+pi_gt	pi	3\.14
+pow2_0	2^0	^1$
+pow2_1	2^1	^2$
+pow2_2	2^2	^4$
+pow2_3	2^3	^8$
+pow2_4	2^4	^16$
+pow2_5	2^5	^32$
+pow2_6	2^6	^64$
+pow2_7	2^7	^128$
+pow2_8	2^8	^256$
+pow2_9	2^9	^512$
+pow2_10	2^10	^1024$
+pow2_11	2^11	^2048$
+pow2_12	2^12	^4096$
+sq_1	1*1	^1$
+id_add0_1	1+0	^1$
+id_mul1_1	1*1	^1$
+sq_2	2*2	^4$
+id_add0_2	2+0	^2$
+id_mul1_2	2*1	^2$
+sq_3	3*3	^9$
+id_add0_3	3+0	^3$
+id_mul1_3	3*1	^3$
+sq_4	4*4	^16$
+id_add0_4	4+0	^4$
+id_mul1_4	4*1	^4$
+sq_5	5*5	^25$
+id_add0_5	5+0	^5$
+id_mul1_5	5*1	^5$
+sq_6	6*6	^36$
+id_add0_6	6+0	^6$
+id_mul1_6	6*1	^6$
+sq_7	7*7	^49$
+id_add0_7	7+0	^7$
+id_mul1_7	7*1	^7$
+sq_8	8*8	^64$
+id_add0_8	8+0	^8$
+id_mul1_8	8*1	^8$
+sq_9	9*9	^81$
+id_add0_9	9+0	^9$
+id_mul1_9	9*1	^9$
+sq_10	10*10	^100$
+id_add0_10	10+0	^10$
+id_mul1_10	10*1	^10$
+err_div0	1/0	division by zero	fail,err
+err_real_div0	1.0/0	division by zero	fail,err
+err_mod0	5%0	modulo by zero	fail,err
+err_zero_negative_power	0^-1	zero cannot be raised	fail,err
+err_power_resource_limit	2^8000001	exact power result is too large	fail,err
+err_unknown	notafunc(1)	unknown	fail,err
+sqrt_tensor	sqrt([1,4])	2-vector
+abs_tensor	abs([-1,2])	2-vector
+sigmoid_tensor	sigmoid([-1,0,1])	3-vector
+err_sqrt_domain	sqrt(-1)	function result is not finite	fail,err
+err_ln_domain	ln(0)	function result is not finite	fail,err
+err_nthroot_even_negative	nthroot(-16,2)	even root of a negative	fail,err
+err_nthroot_zero_index	nthroot(16,0)	positive integer	fail,err
+err_nthroot_noninteger_index	nthroot(16,2.5)	positive integer	fail,err
+err_logb_base_one	logb(8,1)	log base expects	fail,err
+err_logb_nonpositive	logb(8,0)	log base expects	fail,err
+err_logb_x_domain	logb(0,2)	log base expects	fail,err
+err_gamma_pole	gamma(0)	function result is not finite	fail,err
+err_logit_domain	logit(0)	logit expects 0 < x < 1	fail,err
+err_base	base(10,1)	base must	fail,err
+err_ones_negative	ones(-1)	non-negative	fail,err
+err_eye_negative	eye(-1)	non-negative	fail,err
+err_mat_negative	mat(-1,1,7)	non-negative	fail,err
+err_factorial_limit	fact(100001)	max 100000	fail,err
+err_ncr_range	ncr(100001,2)	n <= 100000	fail,err
+rat_chain	1/2+1/3+1/6	^1$
+rat_sub	1-1/3	2/3
+neg_rat	-(1/2)	-1/2
+if_true_lit	if(true, 7, 8)	^7$
+if_false_lit	if(false, 7, 8)	^8$
+cmp_hex	0x10==16	^true$
+cmp_bin	0b1000==8	^true$
+mod_1	10%3	1\.0|1$|Exact
+mod_2	7%2	1
+
+# ---- Phase B: matrices ----
+mat_eye2	eye(2)	2 x 2 matrix
+mat_det	det([1,2;3,4])	-2
+mat_zeros	zeros(2,3)	2 x 3 matrix
+mat_ones	ones(2,2)	1
+mat_mul_id	det([1,2;3,4]*eye(2))	-2
+mat_vec	[1,2,3]	3-vector
+mat_dot	dot([1,2],[3,4])	11
+mat_transpose	transpose([1,2;3,4])	2 x 2 matrix
+mat_inv_det	det(inv(eye(3)))	1
+mat_lin	linsolve(eye(2),[5;7])	5
+
+# ---- Phase C: solve ----
+solve_sqrt2	solve(x^2-2,0,2)	1\.414
+solve_newton	solve(x-3,1)	3
+solve_trailing_expression	solve(x-3,1)+2	5
+solve_sqrt2_prec40	solve(x^2-2,0,2)	1\.4142135623730950488016887242	p=40
+
+# ---- Phase D: calculus ----
+diff_x2	diff(x^2,3)	6
+diff_x3	diff(x^3,2)	12
+diff_x2_prec40	diff(x^2,3)	^6$	p=40
+diff_x5_prec40	diff(x^5,3)	405\.000000000000000000000000000000	p=40
+int_x	integral(x,0,1)	0\.5|1/2
+int_const	integral(1,0,2)	2
+integral_x2_prec40	integral(x^2,0,1)	0\.3333333333333333333333333333	p=40
+integral_sin_prec40	integral(sin(x),0,pi)	^2$	p=40
+
+# ---- Phase E: units ----
+unit_km	to(5*km,m)	5000 m
+unit_ha	to(1*hectare,acre)	2\.471
+unit_mg	to(1*kg,mg)	1e\+06|1000000
+unit_temp	to(100*celsius,fahrenheit)	212
+unit_lb_prec	to(1*lb,kg)	0\.45359237 kg	p=30
+unit_third_km_prec	to(1/3*km,m)	333\.333333333333333333333333333 m	p=30
+err_scaled_target_unit	to(1*m,3*cm)	target unit	fail,err
+
+# ---- Phase F: mensuration ----
+mens_sq	square.area(4)	16
+mens_sq_p	square.perimeter(5)	20
+mens_rect	rectangle.area(3,5)	15
+mens_tri	triangle.area(6,4)	12
+mens_heron	triangle.area_heron(3,4,5)	6
+mens_cube	cube.volume(2)	8
+mens_sphere	sphere.volume(1)	4\.18
+mens_circle_prec	circle.area(1)	3\.1415926535897932384626433832795028841972	p=40
+mens_sphere_prec	sphere.volume(1)	4\.1887902047863909846168578443726705122629	p=40
+err_mens_negative	circle.area(-1)	geometry lengths must be non-negative	fail,err
+err_mens_triangle	triangle.area_heron(1,2,10)	valid triangle	fail,err
+
+# ---- series / primes ----
+ap_term_1	ap_term(2,3,5)	14
+ap_sum_1	ap_sum(2,3,5)	40
+ap_list_1	ap_list(2,3,3)	2
+gp_term_1	gp_term(3,2,4)	24
+gp_sum_1	gp_sum(3,2,4)	45
+gp_power_limit	gp_term(1,2147483647,1000000)	exact power result is too large	fail,err
+gp_list_1	gp_list(3,2,3)	3
+hp_term_1	hp_term(2,3,1)	1/2
+sumi_100	sumi(100)	5050
+sumsq_10	sumsq(10)	385
+sumcu_5	sumcu(5)	225
+sumrange_1	sumrange(1,10)	55
+sp_sum_alias	sp_sum(10)	55
+isprime_t	isprime(17)	true
+isprime_f	isprime(18)	false
+nextprime_1	nextprime(14)	17
+prevprime_1	prevprime(14)	13
+primes_5	primes(5)	5-vector
+primes_to_10	primes_to(10)	2
+primes_1	primes(1)	1-vector
+primes_to_2	primes_to(2)	1-vector
+primes_large_count	primes(10000)	10000-vector
+primes_to_boundary	primes_to(104729)	10000-vector
+err_primes_no_arg	primes()	primes\(n\): n in 1..10000	fail,err
+err_primes_to_no_arg	primes_to()	needs integer limit	fail,err
+err_primes_count	primes(10001)	primes\(n\): n in 1..10000	fail,err
+err_primes_to_tensor_limit	primes_to(104743)	tensor too large	fail,err
+sum_expr_1	sum(x,1,10)	55
+sum_expr_sq	sum(x^2,1,5)	55
+sum_expr_trailing	sum(x,1,3)+10	16
+nested_expr_error	sum(1/0,1,2)	division by zero	fail,err
+ap_term_long_boundary	ap_term(2147483647,1,2)	2147483648
+ap_sum_long_boundary	ap_sum(2147483647,1,2)	4294967295
+gp_sum_long_boundary	gp_sum(2147483647,1,2)	4294967294
+sumi_long_boundary	sumi(2147483647)	2305843008139952128
+sumrange_long_boundary	sumrange(2147483646,2147483647)	4294967293
+hp_term_long_boundary	hp_term(2147483647,1,2)	1/2147483648
+
+# ---- speed / temp / matrix print ----
+speed_div	10*m/s	m/s
+speed_to_kmps	to(10*m/s, kmps)	0\.01
+speed_kmh	to(36*kmh, mps)	10
+speed_named	to(5*kmps, mps)	5000
+temp_freeze	to(0*celsius, fahrenheit)	32
+temp_boil	to(100*c, f)	212
+mat_box	[1,2;3,4]	\+---

@@ -1,0 +1,10 @@
+# TerminalC script fixture: comments, session commands, assignments, and expressions.
+precision 12
+unit_cost = 125/10
+quantity = 8 # inline comment
+waste_factor = 105/100 // another inline comment
+unit_cost * quantity * waste_factor
+a = 1/3
+a + 2/7
+sum(x, 1, 3)
+help functions
