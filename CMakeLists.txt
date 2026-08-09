@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 if(WIN32)
   project(TerminalC VERSION 1.0.0 LANGUAGES C RC)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  project(TerminalC VERSION 1.0.0 LANGUAGES C OBJC)
 else()
   project(TerminalC VERSION 1.0.0 LANGUAGES C)
 endif()
@@ -78,11 +80,13 @@ set(TERMINALC_SOURCES
   src/repl.c
 )
 
-# Interactive plot window: Win32 GDI on Windows (no extra deps); stub elsewhere.
+# Interactive plot window: native system UI on Windows and macOS; stub elsewhere.
 if(WIN32)
   list(APPEND TERMINALC_SOURCES src/plot_win32.c)
   # PE VERSIONINFO — Company/Developer visible in file Properties, not in REPL.
   list(APPEND TERMINALC_SOURCES src/terminalc.rc)
+elseif(APPLE)
+  list(APPEND TERMINALC_SOURCES src/plot_macos.m)
 else()
   list(APPEND TERMINALC_SOURCES src/plot_gui_stub.c)
 endif()
@@ -98,6 +102,12 @@ target_include_directories(terminalc
 target_link_libraries(terminalc PRIVATE ${MPFR_LIBRARY} ${GMP_LIBRARY})
 if(WIN32)
   target_link_libraries(terminalc PRIVATE gdi32 user32 psapi)
+elseif(APPLE)
+  target_link_libraries(terminalc PRIVATE "-framework Cocoa")
+  # Cocoa headers are system code; keep project warnings fatal without making
+  # SDK compatibility annotations fail the build on newer Apple Clang.
+  set_source_files_properties(src/plot_macos.m PROPERTIES
+    COMPILE_OPTIONS "-Wno-error=pedantic")
 endif()
 target_compile_definitions(terminalc PRIVATE TERMINALC_VERSION="${TERMINALC_RELEASE_VERSION}")
 
@@ -150,8 +160,8 @@ install(FILES include/terminalc.h DESTINATION include)
 install(FILES README.md LICENSE docs/USAGE.md docs/FUNCTIONS.md DESTINATION .)
 install(DIRECTORY examples DESTINATION .)
 
-# A self-contained ZIP is the portable, zero-configuration release artifact.
-# Windows builds include the GMP/MPFR/runtime DLLs copied above.
+# A platform-native ZIP is the convenient release artifact. Windows builds
+# include the GMP/MPFR/runtime DLLs copied above; macOS/Linux use shared libs.
 set(CPACK_PACKAGE_NAME "TerminalC")
 set(CPACK_PACKAGE_VENDOR "Impractical.in")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Exact, arbitrary-precision terminal calculator")

@@ -149,7 +149,7 @@ static void print_repl_help(void)
     puts("  solve_quadratic(a, b, c)");
     puts("  p = poly([a, b, c, ...])   exact rational coefficients");
     puts("  degree(p)  evaluate(p, x)  derivative(p)  roots(p)");
-    puts("  plot(expr, x=lo..hi)      interactive window (real lines + zoom)");
+    puts("  plot(expr, x=lo..hi)      native window on Windows/macOS; ASCII fallback");
     puts("Type: help topics   or   help square / help matrix / help units");
 }
 
@@ -761,8 +761,8 @@ void terminalc_print_help(void)
     puts("  solve_quadratic(a, b, c)");
     puts("  p = poly([a, b, c, ...])     exact rational coefficients");
     puts("  degree(p)  evaluate(p, x)  derivative(p)  roots(p)");
-    puts("  plot(expr, x=lower..upper)   interactive window (vector lines)");
-    puts("                               wheel zoom, drag pan; Esc closes");
+    puts("  plot(expr, x=lower..upper)   native window (Windows/macOS) or ASCII");
+    puts("                               wheel zoom, drag pan; Esc/q closes");
     puts("                               TERMINALC_ASCII_PLOT=1 -> terminal only");
     puts("");
     puts("EXAMPLES");

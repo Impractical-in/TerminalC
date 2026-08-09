@@ -26,7 +26,7 @@ terminalc --eval "1/3+2/7"
 - Fibonacci: `fib(n)`, fast `fibn(n)`
 - Stable quadratic solver: `solve_quadratic(1, -3, 2)`
 - Exact-coefficient polynomials: `p = poly([1, -3, 2])`, `degree`, `evaluate`, `derivative`, `roots`
-- Interactive plots: `plot(sin(x), x=-2*pi..2*pi)` — **Win32 popup** with real
+- Interactive plots: `plot(sin(x), x=-2*pi..2*pi)` — **Windows/macOS native popup** with real
   vector lines, wheel zoom / drag pan (no extra graphics library); ASCII fallback
 - Matrices/tensors (1D–4D): `[1,2;3,4]`, `eye`, `zeros`, scalar broadcasting,
   element-wise unary math,
@@ -63,11 +63,30 @@ portable plots, documented functions, and a self-contained release archive.
 
 ## Portable installation
 
-Release ZIP archives contain `terminalc.exe`, the required GMP/MPFR/runtime DLLs,
-the public header, examples, license, and full usage documentation. Extract the
-archive and run `bin/terminalc.exe`; no MSYS2 installation or PATH editing is
-required. The CMake install target and CPack ZIP generator produce the same
-layout for local builds.
+Release ZIP archives contain a native `terminalc` executable, the public header,
+examples, license, and full usage documentation. Windows archives also include
+the required GMP/MPFR/runtime DLLs, so they can be extracted and run without
+MSYS2 or PATH editing. macOS and Linux builds use their platform's shared GMP
+and MPFR libraries; the CMake install target and CPack ZIP generator produce the
+same layout for local builds.
+
+### macOS installation
+
+TerminalC supports Apple Silicon and Intel macOS builds through Homebrew:
+
+```sh
+brew install cmake ninja gmp mpfr
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$(brew --prefix gmp);$(brew --prefix mpfr)"
+cmake --build build --parallel
+./build/terminalc --version
+```
+
+On an interactive Terminal session, `plot(...)` opens a native Cocoa window
+with wheel zoom, drag-to-pan, hover readouts, and keyboard shortcuts. Set
+`TERMINALC_ASCII_PLOT=1` to force the terminal renderer, which is also used
+automatically for pipes and scripts.
 
 ## Project layout
 
@@ -100,9 +119,11 @@ Only two libraries (already used by TerminalC):
 | **GMP** | Exact integers / rationals (`gcd`, `lcm`, base conversion, factorials, …) |
 | **MPFR** | Arbitrary-precision reals, trig, roots, logs, plot sampling |
 | **Win32 GDI** (Windows only) | Interactive plot window (`gdi32` / `user32` — ship with the OS) |
+| **Cocoa** (macOS only) | Interactive plot window (ships with macOS) |
 
-No third-party render software (no gnuplot, SDL, Cairo, Qt). Plots use system GDI
-for real lines + zoom; non-Windows / pipes use the ASCII terminal plot.
+No third-party render software (no gnuplot, SDL, Cairo, Qt). Plots use the
+system windowing API for real lines + zoom; other platforms, pipes, and scripts
+use the ASCII terminal plot.
 
 **MSYS2 MinGW64 packages:** `mingw-w64-x86_64-gmp`, `mingw-w64-x86_64-mpfr`
 (plus a C toolchain / CMake). Make them CMake-discoverable via `CMAKE_PREFIX_PATH`.
@@ -121,6 +142,16 @@ CI should publish platform-specific wheels with matching native libraries; on
 Windows, do not mix a UCRT compiler with MSVCRT-built GMP/MPFR (use one MinGW
 runtime family consistently). `TERMINALC_NATIVE` can point the Python shim at a
 local executable while developing.
+
+## Build (macOS)
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$(brew --prefix gmp);$(brew --prefix mpfr)"
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+cpack --config build/CPackConfig.cmake
+```
 
 ## Build (MSYS2 MinGW64)
 

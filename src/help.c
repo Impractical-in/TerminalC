@@ -355,7 +355,7 @@ static const TerminalCHelpEntry g_help[] = {
     {
         "plot", NULL, "plot", 1,
         "plot(expr, x=lo..hi)",
-        "Plot y = expr for free variable x (interactive window on Windows).",
+        "Plot y = expr for free variable x (native window on Windows/macOS).",
         "expr - expression in x (also y=... form)\n"
         "lo - range start (expression)\n"
         "hi - range end (must be > lo)",

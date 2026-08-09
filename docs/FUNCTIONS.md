@@ -248,9 +248,10 @@ for `--eval`; use the interactive form shown in each example.
 | roots(p) | Display linear or quadratic polynomial roots. |
 | plot(expr, x=lo..hi) | Plot free-variable expression; for example plot(sin(x),x=-pi..pi). |
 
-On Windows, plots use a Win32 GDI window with zoom, pan, hover readout, and
-auto-fit. Pipes, tests, non-Windows builds, and TERMINALC_ASCII_PLOT=1 use the
-terminal ASCII renderer.
+On Windows, plots use a Win32 GDI window; on macOS, they use a native Cocoa
+window. Both provide zoom, pan, hover readout, and auto-fit. Pipes, tests,
+unsupported desktop builds, and TERMINALC_ASCII_PLOT=1 use the terminal
+ASCII renderer.
 
 ## Session-only commands
 

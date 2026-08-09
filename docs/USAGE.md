@@ -153,12 +153,13 @@ evaluate(p, 5)
 derivative(p)            # stores p_d
 roots(p)                 # linear / quadratic
 
-plot(sin(x), x=-2*pi..2*pi)  # interactive popup (Windows): real lines + zoom
+plot(sin(x), x=-2*pi..2*pi)  # native popup (Windows/macOS): real lines + zoom
 plot(y=x, x=0..3)
 ```
 
-On **Windows**, `plot(...)` opens a zoomable window drawn with **Win32 GDI**
-(actual vector lines — no gnuplot/SDL/Cairo required):
+On **Windows**, `plot(...)` opens a zoomable window drawn with **Win32 GDI**;
+on **macOS**, it opens a native **Cocoa** window. Both use actual vector
+lines — no gnuplot/SDL/Cairo required:
 
 - **High resolution**: ~3 samples per horizontal pixel (2.5k–10k points)
 - **Adaptive ticks**: major/minor grid + numeric labels that refine as you zoom
