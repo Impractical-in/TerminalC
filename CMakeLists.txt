@@ -201,6 +201,7 @@ include(CPack)
 
 include(CTest)
 if(BUILD_TESTING)
+  find_package(Python3 QUIET COMPONENTS Interpreter)
   # ---- Bulk regression catalog (hundreds of --eval cases) ----
   include(${CMAKE_CURRENT_SOURCE_DIR}/tests/register_catalog.cmake)
 
@@ -239,6 +240,43 @@ if(BUILD_TESTING)
     COMMAND ${CMAKE_COMMAND}
       "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_plot_export.cmake")
+
+  add_test(NAME plot_ascii_graph
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_plot_graph.cmake")
+
+  add_test(NAME command_matrix
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/commands.input"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_matrix.cmake")
+  set_tests_properties(command_matrix PROPERTIES
+    ENVIRONMENT "TERMINALC_HISTORY_FILE=")
+
+  # End-to-end callable matrix: 30 independent CLI cases for every public
+  # expression function, including aliases and precision variants. Keep this
+  # as one bounded test so small machines do not pay 4,000 process-launch
+  # entries in CTest's scheduler; the runner records every command separately.
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME function_matrix
+      COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/function_matrix.py"
+        "--exe=$<TARGET_FILE:terminalc>"
+        "--output=${CMAKE_CURRENT_BINARY_DIR}/function-matrix-results"
+        "--jobs=1")
+    set_tests_properties(function_matrix PROPERTIES
+      TIMEOUT 600
+      ENVIRONMENT "NO_COLOR=1;TERMINALC_CONFIG=;TERMINALC_HISTORY_FILE=")
+    add_test(NAME graph_matrix
+      COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_matrix.py"
+        "--exe=$<TARGET_FILE:terminalc>"
+        "--output=${CMAKE_CURRENT_BINARY_DIR}/graph-matrix-results")
+    set_tests_properties(graph_matrix PROPERTIES
+      TIMEOUT 300
+      ENVIRONMENT "NO_COLOR=1;TERMINALC_CONFIG=;TERMINALC_HISTORY_FILE=;TERMINALC_ASCII_PLOT=1")
+  endif()
 
   add_test(NAME history_session
     COMMAND ${CMAKE_COMMAND}

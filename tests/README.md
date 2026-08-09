@@ -15,7 +15,11 @@
 | `register_catalog.cmake` | Loads TSV → one CTest per row |
 | `run_eval_case.cmake` | Runs a single eval case |
 | `run_repl_expect.cmake` | REPL stdin fixture + substring expect |
-| `run_plot_export.cmake` | SVG export smoke test |
+| `run_plot_export.cmake` | SVG/CSV export and sample-count test |
+| `run_plot_graph.cmake` | ASCII graph rendering and range test |
+| `run_repl_matrix.cmake` | Command, mode, history, and easter-egg matrix |
+| `function_matrix.py` | 30 end-to-end CLI cases for every public expression function |
+| `graph_matrix.py` | 30 ASCII plot and 30 SVG/CSV plot-export cases |
 | `*.input` | REPL session scripts |
 | `README.md` | This file |
 
@@ -55,9 +59,25 @@ ctest --test-dir build -R '^cat_' --output-on-failure
 
 `validate.py` runs the full exhaustive CTest suite, deterministic numerical
 accuracy checks at several precisions, bounded large-computation stress cases,
-complex FFT/matrix/calculus/unit scenarios, and the sanitizer suite when a
-sanitizer build is available. It writes per-stage logs plus `summary.json` and
-`summary.md` into a timestamped local directory:
+complex FFT/IFFT, matrix, calculus, unit, and plotting scenarios, and the
+sanitizer suite when a sanitizer build is available. The CTest suite includes
+catalog rows for normal results, aliases, precision boundaries, invalid
+domains, malformed tensors, singular matrices, geometry, and FFT/IFFT shape
+errors. Dedicated fixtures exercise every interactive command family and both
+graph rendering and SVG/CSV export. It writes per-stage logs plus
+`summary.json` and `summary.md` into a timestamped local directory:
+
+The callable matrix is an explicit gate: it currently covers 137 public
+expression callables with 30 cases each (4,110 CLI cases). It is intentionally
+one bounded CTest entry so low-memory machines are not overwhelmed by
+thousands of scheduler entries. Its adjacent JSON, TSV, and command log list
+every expression, precision, return code, duration, and output.
+
+Graph coverage is a second explicit gate: 30 varied `plot(...)` ranges and
+30 varied `plot_save(...)` cases, including multi-curve SVG and CSV exports.
+Desktop native windows are not opened in headless validation; the same graph
+sampling/rendering path is exercised through the documented ASCII fallback and
+portable export files.
 
 ```sh
 python3 tests/validate.py --build-dir build --sanitizer-dir build-sanitize
@@ -100,8 +120,11 @@ the recipient has been verified.
 | Display (int vs fraction) | yes | |
 | Errors (div0, unknown) | yes (`fail,err`) | |
 | Help topics | | fixtures |
-| Plot / poly / quadratic | | fixtures |
-| Matrices / units / … | add when implemented | |
+| Plot / poly / quadratic | catalog + fixtures | fixtures |
+| FFT / IFFT / DFT / IDFT | catalog + validation | |
+| Geometry / units / statistics | catalog + validation | |
+| Edge domains / malformed shapes | catalog + robustness fixtures | |
+| Matrices / tensors / linalg | catalog + validation | fixtures |
 
 ## Regenerating bulk arithmetic tables
 

@@ -360,7 +360,12 @@ class ValidationRunner:
         )
         return script
 
-    def run_exhaustive(self, build_dir: Path, sanitizer: bool = False) -> None:
+    def run_exhaustive(
+        self,
+        build_dir: Path,
+        sanitizer: bool = False,
+        exclude_function_matrix: bool = False,
+    ) -> None:
         label = "sanitizer-ctest" if sanitizer else "exhaustive-ctest"
         env = dict(self.env)
         if sanitizer:
@@ -377,6 +382,8 @@ class ValidationRunner:
             "--parallel",
             str(self.parallel),
         ]
+        if exclude_function_matrix:
+            command += ["-E", "^(function_matrix|graph_matrix)$"]
         record = self.command(label, command, 300, env)
         if not record["ok"]:
             record["detail"] = "CTest failed; inspect the saved log"
@@ -386,6 +393,43 @@ class ValidationRunner:
             self.check(record, False, "CTest did not report a complete passing suite")
         else:
             self.check(record, True, f"{match.group(1)} tests passed")
+
+    def run_function_matrix(self, build_dir: Path) -> None:
+        matrix_output = self.output / "function-matrix"
+        matrix_output.mkdir(parents=True, exist_ok=True)
+        script = self.root / "tests" / "function_matrix.py"
+        command = [
+            sys.executable,
+            script,
+            f"--exe={build_dir / ('terminalc.exe' if os.name == 'nt' else 'terminalc')}",
+            f"--output={matrix_output}",
+            f"--jobs={self.parallel}",
+        ]
+        record = self.command("function-matrix", command, 600)
+        record["name"] = "137-functions-x-30-cases"
+        if record["ok"]:
+            record["detail"] = "4,110 end-to-end CLI cases; see function-matrix/"
+        else:
+            record["detail"] = "callable matrix failed; see function-matrix/function-matrix.log"
+
+    def run_graph_matrix(self, build_dir: Path) -> None:
+        matrix_output = self.output / "graph-matrix"
+        matrix_output.mkdir(parents=True, exist_ok=True)
+        script = self.root / "tests" / "graph_matrix.py"
+        command = [
+            sys.executable,
+            script,
+            f"--exe={build_dir / ('terminalc.exe' if os.name == 'nt' else 'terminalc')}",
+            f"--output={matrix_output}",
+        ]
+        env = dict(self.env)
+        env["TERMINALC_ASCII_PLOT"] = "1"
+        record = self.command("graph-matrix", command, 300, env)
+        record["name"] = "30-plot-x-30-export-cases"
+        if record["ok"]:
+            record["detail"] = "30 ASCII plot + 30 SVG/CSV plot_save cases; see graph-matrix/"
+        else:
+            record["detail"] = "graph matrix failed; see graph-matrix/graph-matrix.log"
 
 
 def _git_commit(root: Path) -> str:
@@ -474,7 +518,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not runner.exe.exists():
         runner.mark("preflight", "normal-build", False, f"missing executable: {runner.exe}")
     else:
-        runner.run_exhaustive(build_dir)
+        # Keep the large matrix out of the scheduler count; run it as its own
+        # reportable gate so its 4,110 commands and timing are visible.
+        runner.run_exhaustive(build_dir, exclude_function_matrix=True)
+        runner.run_function_matrix(build_dir)
+        runner.run_graph_matrix(build_dir)
         runner.run_accuracy(build_dir)
         runner.run_pattern_cases("complex", build_dir, COMPLEX_CASES)
         chain = runner.write_chain_script()
