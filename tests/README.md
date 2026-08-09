@@ -51,6 +51,35 @@ ctest --test-dir build --output-on-failure
 ctest --test-dir build -R '^cat_' --output-on-failure
 ```
 
+## Gated validation harness
+
+`validate.py` runs the full exhaustive CTest suite, deterministic numerical
+accuracy checks at several precisions, bounded large-computation stress cases,
+complex FFT/matrix/calculus/unit scenarios, and the sanitizer suite when a
+sanitizer build is available. It writes per-stage logs plus `summary.json` and
+`summary.md` into a timestamped local directory:
+
+```sh
+python3 tests/validate.py --build-dir build --sanitizer-dir build-sanitize
+```
+
+Use `--build` to rebuild existing build trees first. A missing sanitizer build
+is a validation failure unless `--skip-sanitizers` is explicitly supplied; a
+skipped run is reported as partial rather than good-to-go.
+
+Validation reports are local artifacts and are ignored by Git. To archive one
+privately, compress then encrypt it with an approved `age` recipient. The
+recipient is supplied at runtime and no decryption key is stored in the repo:
+
+```sh
+python3 tests/archive_validation.py validation-results/<timestamp> \
+  --recipient "$TERMINALC_VALIDATION_AGE_RECIPIENT"
+```
+
+Do not commit plaintext reports or private keys. Encrypted archives should
+only be added deliberately to a private repository or private storage after
+the recipient has been verified.
+
 ## Adding tests (checklist)
 
 1. Prefer a **catalog row** for anything expressible as `--eval`.
