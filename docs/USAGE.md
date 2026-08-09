@@ -235,5 +235,8 @@ Color panels (when enabled) segment quadratic and polynomial output:
 - **Display rules**
   - **Integers** (exact or integer-valued reals like `log(1000)`) print as plain integers — no `3.000…` padding and no precision banner.
   - **`precision N`** applies only to **decimal / float** lines.
+  - Non-exact trig values near an integer do not carry across that boundary:
+    `sind(89.999999)` displays `0.9999` at precision 4 and `0.9999999999` at
+    precision 10.
   - **Rationals** (exact or recovered, e.g. `1/3`, `sin(pi/6)` → `1/2`) show **Exact:** fraction **and** **Decimal:** expansion.
   - Closed forms like `sqrt(2)` show **Nice:** + **Decimal:**.

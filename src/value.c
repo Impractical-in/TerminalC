@@ -220,14 +220,56 @@ static void print_plain_mpz(const mpz_t z)
     }
 }
 
-static void print_decimal_real(const TerminalCCalc *c, const mpfr_t r)
+static bool print_decimal_real_mode(const TerminalCCalc *c, const mpfr_t r,
+                                    bool preserve_noninteger_boundary)
 {
     /* True zeros stay "0" — precision does not invent 0.000… */
     if (mpfr_zero_p(r) || rounds_to_display_zero(r, c->digits)) {
         print_plain_zero();
-        return;
+        return false;
     }
+
+    if (preserve_noninteger_boundary) {
+        mpfr_t nearest, unit, half_unit, distance, adjusted;
+        mpfr_inits2(c->bits, nearest, unit, half_unit, distance, adjusted,
+                    (mpfr_ptr)0);
+        mpfr_round(nearest, r);
+        mpfr_set_si(unit, -c->digits, MPFR_RNDN);
+        mpfr_exp10(unit, unit, MPFR_RNDN);
+        mpfr_div_ui(half_unit, unit, 2, MPFR_RNDN);
+        mpfr_sub(distance, nearest, r, MPFR_RNDN);
+        bool at_integer = mpfr_zero_p(distance);
+        bool close_below = mpfr_cmp_ui(distance, 0) > 0 &&
+                           mpfr_cmp(distance, half_unit) <= 0;
+        bool close_above = mpfr_cmp_ui(distance, 0) < 0 &&
+                           mpfr_cmpabs(distance, half_unit) <= 0;
+        if (at_integer || close_below || close_above) {
+            mpfr_set(adjusted, nearest, MPFR_RNDN);
+            if (at_integer || close_below)
+                mpfr_sub(adjusted, adjusted, unit, MPFR_RNDN);
+            else
+                mpfr_add(adjusted, adjusted, unit, MPFR_RNDN);
+            mpfr_printf("%s%.*RNf%s\n", C_B_GRN, c->digits, adjusted, C_RST);
+            mpfr_clears(nearest, unit, half_unit, distance, adjusted,
+                        (mpfr_ptr)0);
+            return true;
+        }
+        mpfr_clears(nearest, unit, half_unit, distance, adjusted,
+                    (mpfr_ptr)0);
+    }
+
     mpfr_printf("%s%.*RNf%s\n", C_B_GRN, c->digits, r, C_RST);
+    return false;
+}
+
+static void print_decimal_real(const TerminalCCalc *c, const mpfr_t r)
+{
+    print_decimal_real_mode(c, r, false);
+}
+
+static bool print_decimal_real_boundary(const TerminalCCalc *c, const mpfr_t r)
+{
+    return print_decimal_real_mode(c, r, true);
 }
 
 /* True if s is an optional sign + decimal digits only (no slash / radical). */
@@ -867,8 +909,11 @@ void terminalc_print_value(TerminalCCalc *c, const TerminalCValue *v)
     /* REAL — prefer integer / fraction / radical; precision only for decimals. */
 
     if (v->display_decimal) {
-        print_decimal_real(c, v->r);
-        printf("%s[%d digits, round-to-nearest]%s\n", C_DIM, c->digits, C_RST);
+        bool carry_suppressed = print_decimal_real_boundary(c, v->r);
+        printf("%s[%d digits, %s]%s\n", C_DIM, c->digits,
+               carry_suppressed ? "nearest; non-integer carry suppressed"
+                                : "round-to-nearest",
+               C_RST);
         return;
     }
 
