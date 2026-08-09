@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libgmp-dev libmpfr-dev cppcheck
+          sudo apt-get install -y cmake ninja-build libgmp-dev libmpfr-dev cppcheck expect
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
       - name: Build
@@ -83,7 +83,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build libgmp-dev libmpfr-dev
+          sudo apt-get install -y clang cmake ninja-build libgmp-dev libmpfr-dev expect
       - name: Configure
         run: |
           cmake -S . -B build-sanitize -G Ninja \

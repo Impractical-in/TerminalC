@@ -236,6 +236,16 @@ if(BUILD_TESTING)
       "-DTERMINALC_EXPECT=Bye! Thanks for using TerminalC."
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
 
+  if(UNIX)
+    find_program(TERMINALC_EXPECT_EXECUTABLE expect)
+    if(TERMINALC_EXPECT_EXECUTABLE)
+      add_test(NAME repl_ctrl_c
+        COMMAND "${TERMINALC_EXPECT_EXECUTABLE}"
+          -f "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_ctrl_c.exp"
+          "$<TARGET_FILE:terminalc>")
+    endif()
+  endif()
+
   add_test(NAME help_topics_index
     COMMAND ${CMAKE_COMMAND}
       "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"

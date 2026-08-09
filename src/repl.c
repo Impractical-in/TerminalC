@@ -272,8 +272,10 @@ static void repl_end_raw_input(const struct termios *saved)
 }
 #endif
 
-static bool repl_read_line(TerminalCHistory *history, char *line, size_t size)
+static bool repl_read_line(TerminalCHistory *history, char *line, size_t size,
+                           bool *cancelled)
 {
+    *cancelled = false;
     if (!history->persistent)
         return fgets(line, size, stdin) != NULL;
 
@@ -322,6 +324,7 @@ static bool repl_read_line(TerminalCHistory *history, char *line, size_t size)
             repl_redraw_line("", 0, 0, &painted);
             puts("^C");
             line[0] = '\0';
+            *cancelled = true;
             return true;
         }
 
@@ -527,6 +530,7 @@ static void print_repl_help(void)
     puts("  history [clear]           Show or clear persistent command history");
     puts("  !! / !N                   Replay the last or numbered history entry");
     puts("  Up/Down arrows            Browse history; Left/Right edit the line");
+    puts("  Ctrl-C                    Cancel input; press twice at an empty prompt to exit");
     puts("  color on|off              Toggle ANSI color output");
     puts("  advanced on|off           Time / memory / output-size stats");
     puts("");
@@ -1105,6 +1109,7 @@ int terminalc_repl(TerminalCCalc *c)
 {
     char line[TERMINALC_LINE_MAX];
     TerminalCHistory history;
+    bool ctrl_c_pending = false;
     memset(&history, 0, sizeof history);
     history.persistent = history_is_interactive();
     history_load(&history);
@@ -1118,10 +1123,20 @@ int terminalc_repl(TerminalCCalc *c)
     while (1) {
         repl_print_prompt();
         fflush(stdout);
-        if (!repl_read_line(&history, line, sizeof line)) {
+        bool cancelled = false;
+        if (!repl_read_line(&history, line, sizeof line, &cancelled)) {
             putchar('\n');
             break;
         }
+        if (cancelled) {
+            if (ctrl_c_pending) {
+                putchar('\n');
+                break;
+            }
+            ctrl_c_pending = true;
+            continue;
+        }
+        ctrl_c_pending = false;
         line[strcspn(line, "\r\n")] = '\0';
         trim_inplace(line);
         if (!line[0])

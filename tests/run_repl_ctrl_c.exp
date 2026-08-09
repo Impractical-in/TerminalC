@@ -1,0 +1,19 @@
+if {$argc != 1} {
+    puts stderr "expected terminalc executable path"
+    exit 2
+}
+
+set timeout 3
+set terminalc [lindex $argv 0]
+spawn $terminalc --no-color
+
+expect "calc> "
+send "\003"
+expect "^C"
+expect "calc> "
+send "\003"
+set result [wait]
+if {[lindex $result 3] != 0} {
+    puts stderr "terminalc exited with status [lindex $result 3]"
+    exit 1
+}
