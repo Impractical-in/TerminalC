@@ -59,6 +59,7 @@ struct TerminalCValue {
     mpq_t q;
     mpfr_t r;
     bool b;
+    bool display_decimal; /* REAL: preserve decimal formatting */
     TerminalCTensor *ten; /* TERMINALC_TENSOR (owned) */
     int unit_id;   /* TERMINALC_MEASURE: magnitude in q (or r if promoted) */
 };

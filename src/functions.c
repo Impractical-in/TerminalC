@@ -1076,6 +1076,7 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
                 mpfr_init2(t, c->bits);
                 degrees_to_rad(c, t, &args[0]);
                 o.type = TERMINALC_REAL;
+                o.display_decimal = true;
                 mpfr_sin(o.r, t, MPFR_RNDN);
                 mpfr_clear(t);
             } else {
@@ -1091,6 +1092,7 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
                 mpfr_init2(t, c->bits);
                 degrees_to_rad(c, t, &args[0]);
                 o.type = TERMINALC_REAL;
+                o.display_decimal = true;
                 mpfr_cos(o.r, t, MPFR_RNDN);
                 mpfr_clear(t);
             } else {
@@ -1106,6 +1108,7 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
                 mpfr_init2(t, c->bits);
                 degrees_to_rad(c, t, &args[0]);
                 o.type = TERMINALC_REAL;
+                o.display_decimal = true;
                 mpfr_tan(o.r, t, MPFR_RNDN);
                 mpfr_clear(t);
             } else {
@@ -1161,6 +1164,7 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
             mpfr_init2(t, c->bits);
             degrees_to_rad(c, t, &args[0]);
             o.type = TERMINALC_REAL;
+            o.display_decimal = true;
             if (strcmp(n, "sind") == 0)
                 mpfr_sin(o.r, t, MPFR_RNDN);
             else if (strcmp(n, "cosd") == 0)

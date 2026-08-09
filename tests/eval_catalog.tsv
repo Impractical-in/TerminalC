@@ -492,6 +492,8 @@ floor_neg	floor(-1.2)	^-2$
 sin_0	sin(0)	^0$
 sind_default_near_one_88	sind(88)	^0\.9994
 sind_default_near_one	sind(89)	^0\.9998
+sind_near_one_default	sind(89.999999)	^1\.0000
+sind_near_one_prec10	sind(89.999999)	^1\.0000000000	p=10
 cos_0	cos(0)	^1$
 tan_0	tan(0)	^0$
 sin_pi6	sin(pi/6)	1/2
