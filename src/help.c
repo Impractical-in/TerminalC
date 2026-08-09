@@ -401,6 +401,21 @@ static const TerminalCHelpEntry g_help[] = {
         "See: help matrix"
     },
 
+    /* ---- signal processing ---- */
+    {
+        "fft", "ifft dft idft real imag", "signal", 1,
+        "fft(vector) | dft(vector)\nifft(complex_tensor) | idft(complex_tensor)\n"
+        "real(signal)\nimag(signal)",
+        "Arbitrary-precision discrete Fourier transforms.",
+        "vector - one-dimensional tensor with at most 4096 scalar samples\n"
+        "complex_tensor - the 2 x N [real; imaginary] tensor returned by fft/ifft",
+        "  fft([1, 0, 0, 0])\n"
+        "  real(fft([1, 2, 3, 4]))\n"
+        "  real(ifft(fft([1, 2, 3, 4])))",
+        "Power-of-two lengths use radix-2 FFT; other lengths use a direct DFT.\n"
+        "Complex values are represented as a 2 x N tensor: row 0 real, row 1 imaginary."
+    },
+
     /* ---- solvers / calculus ---- */
     {
         "solve", NULL, "solver", 1,
@@ -673,6 +688,10 @@ static const TerminalCFunctionGroup g_function_groups[] = {
      "mat(rows, cols, values...)\nshape(tensor)\ntranspose(A)\n"
      "det(A)\ninv(A)\nlinsolve(A, b)\ndot(u, v)\n"
      "tensor + - * / scalar broadcast"},
+    {"Signal processing",
+     "fft(vector) | dft(vector)\nifft(complex_tensor) | idft(complex_tensor)\n"
+     "real(signal)\nimag(signal)\n"
+     "Complex vectors use a 2 x N tensor: [real row; imaginary row]."},
     {"Numerical solvers and calculus",
      "solve(expr, guess) | solve(expr, lo, hi)\n"
      "diff(expr, x0)\nintegral(expr, lo, hi)"},

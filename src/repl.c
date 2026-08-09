@@ -169,7 +169,8 @@ enum {
     TERMINALC_REPL_KEY_LEFT = -8,
     TERMINALC_REPL_KEY_RIGHT = -9,
     TERMINALC_REPL_KEY_HOME = -10,
-    TERMINALC_REPL_KEY_END = -11
+    TERMINALC_REPL_KEY_END = -11,
+    TERMINALC_REPL_KEY_CLEAR = -12
 };
 
 static int repl_read_byte(void)
@@ -221,6 +222,10 @@ static int repl_read_key(void)
         return TERMINALC_REPL_KEY_ENTER;
     if (ch == 8 || ch == 127)
         return TERMINALC_REPL_KEY_BACKSPACE;
+    if (ch == 12)
+        return TERMINALC_REPL_KEY_CLEAR;
+    if (ch == 18)
+        return TERMINALC_REPL_KEY_UP;
     if (ch == 3)
         return TERMINALC_REPL_KEY_CANCEL;
     if (ch == 4)
@@ -326,6 +331,12 @@ static bool repl_read_line(TerminalCHistory *history, char *line, size_t size,
             line[0] = '\0';
             *cancelled = true;
             return true;
+        }
+
+        if (key == TERMINALC_REPL_KEY_CLEAR) {
+            fputs("\033[2J\033[H", stdout);
+            repl_redraw_line(line, length, cursor, &painted);
+            continue;
         }
 
         if (key == TERMINALC_REPL_KEY_UP) {
@@ -548,6 +559,7 @@ static void print_repl_help(void)
     puts("Sequences:   fib(n)  fibn(n)");
     puts("Matrices:    [1,2;3,4]  eye(n) zeros(...) ones(...) mat(...)");
     puts("             det inv transpose linsolve dot shape");
+    puts("Signal:      fft/ifft (2 x N complex tensors) real(...) imag(...)");
     puts("Solve/calc:  solve(expr,guess|lo,hi)  diff(expr,x0)  integral(expr,a,b)");
     puts("Units:       5*km  to(qty, unit)  mag(qty)   (m km kg mg ha acre ...)");
     puts("Mensuration: square.area(s)  circle.area(r)  sphere.volume(r) ...");
@@ -559,7 +571,7 @@ static void print_repl_help(void)
     puts("  p = poly([a, b, c, ...])   exact rational coefficients");
     puts("  degree(p)  evaluate(p, x)  derivative(p)  roots(p)");
     puts("  plot(expr, x=lo..hi)      native window on Windows/macOS; ASCII fallback");
-    puts("  plot_save(exprs, x=lo..hi, file.svg)  export one or more curves");
+    puts("  plot_save(exprs, x=lo..hi, file.svg|file.csv)  export curves/data");
     puts("Type: help topics   or   help square / help matrix / help units");
 }
 
@@ -975,7 +987,11 @@ static bool handle_line(TerminalCCalc *c, char *line)
                 path[path_len - 1] = '\0';
                 path++;
             }
-            terminalc_plot_svg(c, line + 10, xeq, hi, path);
+            const char *extension = strrchr(path, '.');
+            if (extension && strcmp(extension, ".csv") == 0)
+                terminalc_plot_csv(c, line + 10, xeq, hi, path);
+            else
+                terminalc_plot_svg(c, line + 10, xeq, hi, path);
         } else {
             fprintf(stderr,
                     "%sUse: plot_save(expr; expr, x=lo..hi, file.svg)%s\n"
@@ -1081,6 +1097,13 @@ static bool handle_line(TerminalCCalc *c, char *line)
     if (terminalc_eval(c, rhs, &v)) {
         if (c->advanced)
             terminalc_adv_end(c, &v, &adv);
+        if (terminalc_interrupt_requested()) {
+            fprintf(stderr, "%sCalculation interrupted by Ctrl-C.%s\n", C_B_YEL,
+                    C_RST);
+            terminalc_clear_interrupt();
+            terminalc_value_clear(&v);
+            return true;
+        }
         if (has_assign) {
             if (!assign_var(c, name, &v)) {
                 terminalc_value_clear(&v);
@@ -1121,6 +1144,7 @@ int terminalc_repl(TerminalCCalc *c)
            C_DIM, c->digits, C_B_CYN, C_DIM, C_B_CYN, C_DIM, C_RST);
 
     while (1) {
+        terminalc_clear_interrupt();
         repl_print_prompt();
         fflush(stdout);
         bool cancelled = false;
@@ -1190,6 +1214,13 @@ int terminalc_run_script(TerminalCCalc *c, const char *path)
         c->error_pos = 0;
         if (!handle_line(c, line))
             break;
+        if (terminalc_interrupt_requested()) {
+            fprintf(stderr, "%sCalculation interrupted by Ctrl-C.%s\n", C_B_YEL,
+                    C_RST);
+            terminalc_clear_interrupt();
+            rc = 130;
+            break;
+        }
         if (c->error) {
             fprintf(stderr, "%sScript failure at %s:%zu.%s\n",
                     C_B_RED, path, line_no, C_RST);
@@ -1240,6 +1271,8 @@ void terminalc_print_help(void)
     puts("  vars | clear_vars");
     puts("  history [clear] | !! | !N");
     puts("  Up/Down arrows browse history; Left/Right edit the current line");
+    puts("  Ctrl-D exit | Ctrl-L clear screen | Ctrl-R recall previous history entry");
+    puts("  Startup config: ~/.terminalcrc (or TERMINALC_CONFIG=FILE)");
     puts("  color on|off");
     puts("  advanced on|off         time / result mem / output size");
     puts("");
@@ -1258,6 +1291,7 @@ void terminalc_print_help(void)
     puts("  log2 log1p expm1 cbrt pow ramanujan_pi  min max clamp");
     puts("  abs floor ceil  fact  gcd  lcm  ncr|choose  if");
     puts("  mean variance stddev norm  sigmoid relu sign");
+    puts("  fft/ifft/dft/idft  real(signal)  imag(signal)");
     puts("  hex(n)  bin(n)  oct(n)  base(n, b) | tobase(n, b)   b in 2..36");
     puts("  fib(n)  fibn(n)");
     puts("");
@@ -1270,7 +1304,7 @@ void terminalc_print_help(void)
     puts("  p = poly([a, b, c, ...])     exact rational coefficients");
     puts("  degree(p)  evaluate(p, x)  derivative(p)  roots(p)");
     puts("  plot(expr, x=lower..upper)   native window (Windows/macOS) or ASCII");
-    puts("  plot_save(exprs, x=lo..hi, file.svg)  multi-curve SVG export");
+    puts("  plot_save(exprs, x=lo..hi, file.svg|file.csv)  plot/data export");
     puts("                               wheel zoom, drag pan; Esc/q closes");
     puts("                               TERMINALC_ASCII_PLOT=1 -> terminal only");
     puts("");
@@ -1290,6 +1324,7 @@ void terminalc_print_help(void)
     puts("");
     puts("ENVIRONMENT");
     puts("  NO_COLOR                Disable color when set (any value)");
+    puts("  TERMINALC_CONFIG        Startup config path (default ~/.terminalcrc)");
     puts("");
     puts("See README.md and docs/USAGE.md for full documentation.");
     puts("");

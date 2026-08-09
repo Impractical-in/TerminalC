@@ -66,6 +66,8 @@ set(TERMINALC_SOURCES
   src/meta.c
   src/help.c
   src/color.c
+  src/config.c
+  src/interrupt.c
   src/value.c
   src/advanced.c
   src/calc.c
@@ -75,6 +77,7 @@ set(TERMINALC_SOURCES
   src/linalg.c
   src/domains.c
   src/series.c
+  src/signal.c
   src/algebra.c
   src/plot.c
   src/plot_export.c
@@ -161,15 +164,39 @@ install(FILES include/terminalc.h DESTINATION include)
 install(FILES README.md LICENSE docs/USAGE.md docs/FUNCTIONS.md DESTINATION .)
 install(DIRECTORY examples DESTINATION .)
 
-# A platform-native ZIP is the convenient release artifact. Windows builds
-# include the GMP/MPFR/runtime DLLs copied above; macOS/Linux use shared libs.
+# Platform-native packages. Windows bundles the MinGW/GMP/MPFR runtime DLLs;
+# macOS emits an unsigned .pkg and ZIP; Linux emits DEB and TGZ packages.
 set(CPACK_PACKAGE_NAME "TerminalC")
 set(CPACK_PACKAGE_VENDOR "Impractical.in")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Exact, arbitrary-precision terminal calculator")
 set(CPACK_PACKAGE_VERSION "${TERMINALC_RELEASE_VERSION}")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_GENERATOR "ZIP")
+if(APPLE)
+  # productbuild accepts text/RTF/HTML resource files, but not extensionless
+  # LICENSE files. The installed tree still ships the canonical LICENSE.
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/LICENSE.txt")
+else()
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+endif()
 set(CPACK_PACKAGE_FILE_NAME "TerminalC-${TERMINALC_RELEASE_VERSION}-${CMAKE_SYSTEM_NAME}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "TerminalC")
+set(CPACK_STRIP_FILES TRUE)
+if(WIN32)
+  set(CPACK_GENERATOR "ZIP;NSIS")
+  set(CPACK_NSIS_DISPLAY_NAME "TerminalC")
+  set(CPACK_NSIS_PACKAGE_NAME "TerminalC")
+  set(CPACK_NSIS_HELP_LINK "https://github.com/Impractical-in/TerminalC")
+  set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/Impractical-in/TerminalC")
+  set(CPACK_NSIS_MODIFY_PATH OFF)
+elseif(APPLE)
+  set(CPACK_GENERATOR "ZIP;productbuild")
+  set(CPACK_PRODUCTBUILD_IDENTIFIER "in.impractical.terminalc")
+else()
+  set(CPACK_GENERATOR "TGZ;DEB")
+  set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Impractical.in")
+  set(CPACK_DEBIAN_PACKAGE_SECTION "math")
+  set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/Impractical-in/TerminalC")
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+endif()
 include(CPack)
 
 include(CTest)
@@ -300,6 +327,15 @@ if(BUILD_TESTING)
       "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/precision.input"
       "-DTERMINALC_EXPECT=Precision set to 5"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+
+  add_test(NAME config_startup
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/config.input"
+      "-DTERMINALC_EXPECT=0.999847695"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+  set_tests_properties(config_startup PROPERTIES
+    ENVIRONMENT "TERMINALC_CONFIG=${CMAKE_CURRENT_SOURCE_DIR}/tests/config.rc;TERMINALC_HISTORY_FILE=")
 
   add_test(NAME bool_repl_session
     COMMAND ${CMAKE_COMMAND}

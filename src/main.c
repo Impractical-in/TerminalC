@@ -49,13 +49,16 @@ int main(int argc, char **argv)
 {
     /* Keep developer/product strings linked into the executable image. */
     terminalc_meta_anchor();
+    terminalc_install_interrupt_handler();
 
     bool no_color = false;
     bool force_color = false;
     bool advanced = false;
+    bool advanced_set = false;
     int precision = 0;
     bool precision_set = false;
     TerminalCOutputFormat output_format = TERMINALC_OUTPUT_PLAIN;
+    bool format_set = false;
     const char *eval_expr = NULL;
     const char *script_path = NULL;
 
@@ -80,6 +83,7 @@ int main(int argc, char **argv)
         }
         if (strcmp(a, "--advanced") == 0) {
             advanced = true;
+            advanced_set = true;
             continue;
         }
         if (strcmp(a, "--format") == 0) {
@@ -87,6 +91,7 @@ int main(int argc, char **argv)
                 usage_error("format must be plain, json, or csv");
                 return 2;
             }
+            format_set = true;
             continue;
         }
         if (strcmp(a, "-p") == 0 || strcmp(a, "--precision") == 0) {
@@ -135,6 +140,7 @@ int main(int argc, char **argv)
                 usage_error("format must be plain, json, or csv");
                 return 2;
             }
+            format_set = true;
             continue;
         }
         if (strncmp(a, "--script=", 9) == 0) {
@@ -148,23 +154,7 @@ int main(int argc, char **argv)
 
     if (force_color) {
         terminalc_color_enable_windows_vt();
-        /* force-on: skip isatty by temporarily using enabled palette */
-        g_terminalc_color.enabled = true;
-        g_terminalc_color.reset = "\033[0m";
-        g_terminalc_color.bold = "\033[1m";
-        g_terminalc_color.dim = "\033[2m";
-        g_terminalc_color.red = "\033[31m";
-        g_terminalc_color.green = "\033[32m";
-        g_terminalc_color.yellow = "\033[33m";
-        g_terminalc_color.blue = "\033[34m";
-        g_terminalc_color.magenta = "\033[35m";
-        g_terminalc_color.cyan = "\033[36m";
-        g_terminalc_color.white = "\033[37m";
-        g_terminalc_color.bold_cyan = "\033[1;36m";
-        g_terminalc_color.bold_yellow = "\033[1;33m";
-        g_terminalc_color.bold_green = "\033[1;32m";
-        g_terminalc_color.bold_magenta = "\033[1;35m";
-        g_terminalc_color.bold_red = "\033[1;31m";
+        terminalc_color_force_on(&g_terminalc_color);
     } else {
         if (!no_color)
             terminalc_color_enable_windows_vt();
@@ -173,8 +163,20 @@ int main(int argc, char **argv)
 
     TerminalCCalc calc;
     terminalc_init(&calc);
-    calc.advanced = advanced;
-    calc.output_format = output_format;
+    (void)terminalc_load_config(&calc);
+    /* Explicit CLI color flags override startup configuration. */
+    if (force_color) {
+        terminalc_color_enable_windows_vt();
+        terminalc_color_force_on(&g_terminalc_color);
+        calc.color = true;
+    } else if (no_color) {
+        terminalc_color_init(&g_terminalc_color, true);
+        calc.color = false;
+    }
+    if (advanced_set)
+        calc.advanced = advanced;
+    if (format_set)
+        calc.output_format = output_format;
 
     if (precision_set) {
         if (!terminalc_set_precision(&calc, precision, false)) {
@@ -199,19 +201,30 @@ int main(int argc, char **argv)
         if (terminalc_eval(&calc, eval_expr, &v)) {
             if (calc.advanced)
                 terminalc_adv_end(&calc, &v, &adv);
-            terminalc_print_value(&calc, &v);
-            if (calc.advanced)
-                terminalc_adv_print(&calc, &adv);
+            if (terminalc_interrupt_requested()) {
+                fprintf(stderr, "Calculation interrupted by Ctrl-C.\n");
+                terminalc_clear_interrupt();
+            } else {
+                terminalc_print_value(&calc, &v);
+                if (calc.advanced)
+                    terminalc_adv_print(&calc, &adv);
+            }
             terminalc_value_clear(&v);
             rc = 0;
         } else {
             if (calc.advanced)
                 terminalc_adv_end(&calc, NULL, &adv);
-            terminalc_print_error(&calc);
-            if (calc.advanced)
-                terminalc_adv_print(&calc, &adv);
+            if (terminalc_interrupt_requested()) {
+                fprintf(stderr, "Calculation interrupted by Ctrl-C.\n");
+                terminalc_clear_interrupt();
+                rc = 130;
+            } else {
+                terminalc_print_error(&calc);
+                if (calc.advanced)
+                    terminalc_adv_print(&calc, &adv);
+                rc = 1;
+            }
             terminalc_value_clear(&v);
-            rc = 1;
         }
     } else {
         rc = terminalc_repl(&calc);

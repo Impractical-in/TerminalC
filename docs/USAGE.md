@@ -93,11 +93,26 @@ calc> quit
 | `history` / `history clear` | Show or clear persistent command history |
 | `!!` / `!N` | Replay the last or numbered history entry |
 | Up/Down arrows | Browse history; Left/Right, Home, and End edit the current line |
+| Ctrl-D / Ctrl-L / Ctrl-R | Exit at an empty prompt / clear screen / recall previous history entry |
 | Ctrl-C | Cancel the current input; press twice at an empty prompt to exit TerminalC |
 | `hi` / `bye` | Friendly greeting or farewell easter eggs |
 | `color on` / `color off` | Toggle color |
 | `advanced on` / `advanced off` | Per-eval time, memory, output size |
 | `mode advanced` / `mode normal` | Aliases for advanced on/off |
+
+### Startup configuration
+
+TerminalC loads `~/.terminalcrc` at startup. Set `TERMINALC_CONFIG` to use a
+different file, or set it to an empty value to disable configuration loading.
+Supported entries are `precision N`, `angle radians|degrees`,
+`advanced on|off`, `format plain|json|csv`, and `color off`:
+
+```text
+precision 20
+angle degrees
+format plain
+advanced off
+```
 
 ### Expressions
 
@@ -194,8 +209,9 @@ GUI cannot open, TerminalC falls back to the in-terminal ASCII plot.
 
 `plot_save(expr; expr, x=lo..hi, file.svg)` samples one or more expressions and
 writes a standalone SVG with axes, labels, legend, and separate curve colors.
-The semicolon separates curves; expressions remain evaluated with the active
-arbitrary precision before export.
+Use a `.csv` path to export the sampled x/y data instead. The semicolon
+separates curves; expressions remain evaluated with the active arbitrary
+precision before export.
 
 ### Base conversion examples
 

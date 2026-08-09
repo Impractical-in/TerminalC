@@ -21,6 +21,26 @@ TerminalCColor g_terminalc_color;
 
 static const char *empty = "";
 
+static void terminalc_color_set_ansi(TerminalCColor *c)
+{
+    c->enabled = true;
+    c->reset = "\033[0m";
+    c->bold = "\033[1m";
+    c->dim = "\033[2m";
+    c->red = "\033[31m";
+    c->green = "\033[32m";
+    c->yellow = "\033[33m";
+    c->blue = "\033[34m";
+    c->magenta = "\033[35m";
+    c->cyan = "\033[36m";
+    c->white = "\033[37m";
+    c->bold_cyan = "\033[1;36m";
+    c->bold_yellow = "\033[1;33m";
+    c->bold_green = "\033[1;32m";
+    c->bold_magenta = "\033[1;35m";
+    c->bold_red = "\033[1;31m";
+}
+
 void terminalc_color_enable_windows_vt(void)
 {
 #ifdef _WIN32
@@ -69,19 +89,10 @@ void terminalc_color_init(TerminalCColor *c, bool force_off)
         return;
     }
 
-    c->reset = "\033[0m";
-    c->bold = "\033[1m";
-    c->dim = "\033[2m";
-    c->red = "\033[31m";
-    c->green = "\033[32m";
-    c->yellow = "\033[33m";
-    c->blue = "\033[34m";
-    c->magenta = "\033[35m";
-    c->cyan = "\033[36m";
-    c->white = "\033[37m";
-    c->bold_cyan = "\033[1;36m";
-    c->bold_yellow = "\033[1;33m";
-    c->bold_green = "\033[1;32m";
-    c->bold_magenta = "\033[1;35m";
-    c->bold_red = "\033[1;31m";
+    terminalc_color_set_ansi(c);
+}
+
+void terminalc_color_force_on(TerminalCColor *c)
+{
+    terminalc_color_set_ansi(c);
 }

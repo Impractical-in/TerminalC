@@ -316,3 +316,75 @@ void terminalc_plot_svg(TerminalCCalc *c, const char *expr_in, const char *lo,
     printf("Wrote SVG plot to '%s' (%zu curve%s).\n", path, curve_count,
            curve_count == 1 ? "" : "s");
 }
+
+void terminalc_plot_csv(TerminalCCalc *c, const char *expr_in, const char *lo,
+                        const char *hi, const char *path)
+{
+    char curves[TERMINALC_SVG_MAX_CURVES][TERMINALC_LINE_MAX];
+    size_t curve_count = split_curves(expr_in, curves);
+    if (curve_count == 0 || !path || !path[0]) {
+        fprintf(stderr, "%sCSV plot export needs expressions and a file path.%s\n",
+                C_B_RED, C_RST);
+        return;
+    }
+
+    TerminalCValue lower, upper;
+    if (!terminalc_eval(c, lo, &lower) || !terminalc_eval(c, hi, &upper)) {
+        terminalc_print_error(c);
+        return;
+    }
+    mpfr_t l, h, xv, yv;
+    mpfr_inits2(c->bits, l, h, xv, yv, (mpfr_ptr)0);
+    terminalc_as_real(c, l, &lower);
+    terminalc_as_real(c, h, &upper);
+    terminalc_value_clear(&lower);
+    terminalc_value_clear(&upper);
+    if (mpfr_cmp(l, h) >= 0) {
+        fprintf(stderr, "%sPlot range must increase (lo < hi).%s\n", C_B_RED,
+                C_RST);
+        mpfr_clears(l, h, xv, yv, (mpfr_ptr)0);
+        return;
+    }
+
+    FILE *fp = fopen(path, "w");
+    if (!fp) {
+        fprintf(stderr, "%sCannot write CSV plot export '%s'.%s\n", C_B_RED,
+                path, C_RST);
+        mpfr_clears(l, h, xv, yv, (mpfr_ptr)0);
+        return;
+    }
+    fputs("x", fp);
+    for (size_t curve = 0; curve < curve_count; curve++)
+        fprintf(fp, ",\"%s\"", curves[curve]);
+    fputc('\n', fp);
+
+    for (int i = 0; i < TERMINALC_SVG_SAMPLES; i++) {
+        mpfr_sub(xv, h, l, MPFR_RNDN);
+        mpfr_mul_ui(xv, xv, (unsigned long)i, MPFR_RNDN);
+        mpfr_div_ui(xv, xv, TERMINALC_SVG_SAMPLES - 1, MPFR_RNDN);
+        mpfr_add(xv, xv, l, MPFR_RNDN);
+        double x = mpfr_get_d(xv, MPFR_RNDN);
+        fprintf(fp, "%.17g", x);
+        c->x.type = TERMINALC_REAL;
+        mpfr_set(c->x.r, xv, MPFR_RNDN);
+        for (size_t curve = 0; curve < curve_count; curve++) {
+            TerminalCValue value;
+            if (!terminalc_eval(c, curves[curve], &value)) {
+                fputc(',', fp);
+                continue;
+            }
+            terminalc_as_real(c, yv, &value);
+            double y = mpfr_get_d(yv, MPFR_RNDN);
+            terminalc_value_clear(&value);
+            if (isfinite(y))
+                fprintf(fp, ",%.17g", y);
+            else
+                fputc(',', fp);
+        }
+        fputc('\n', fp);
+    }
+    fclose(fp);
+    mpfr_clears(l, h, xv, yv, (mpfr_ptr)0);
+    printf("Wrote CSV plot data to '%s' (%zu curve%s, %d samples).\n", path,
+           curve_count, curve_count == 1 ? "" : "s", TERMINALC_SVG_SAMPLES);
+}

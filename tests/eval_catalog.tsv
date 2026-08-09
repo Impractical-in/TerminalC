@@ -630,6 +630,9 @@ mat_mul_id	det([1,2;3,4]*eye(2))	-2
 mat_vec	[1,2,3]	3-vector
 mat_dot	dot([1,2],[3,4])	11
 mat_transpose	transpose([1,2;3,4])	2 x 2 matrix
+fft_impulse	fft([1,0,0,0])	2 x 4 matrix
+fft_roundtrip	real(ifft(fft([1,2,3,4])))	4-vector
+fft_non_power	real(fft([1,2,3]))	3-vector
 mat_inv_det	det(inv(eye(3)))	1
 mat_lin	linsolve(eye(2),[5;7])	5
 

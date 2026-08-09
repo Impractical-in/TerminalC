@@ -26,6 +26,7 @@
 #define TERMINALC_TENSOR_MAX_RANK 4
 #define TERMINALC_PARSE_MAX_DEPTH 64
 #define TERMINALC_EXACT_RESULT_MAX_BITS 8000000
+#define TERMINALC_FFT_MAX_SAMPLES 4096
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,6 +106,10 @@ typedef struct TerminalCCalc {
 void terminalc_init(TerminalCCalc *c);
 void terminalc_clear(TerminalCCalc *c);
 bool terminalc_set_precision(TerminalCCalc *c, int digits, bool verbose);
+bool terminalc_load_config(TerminalCCalc *c);
+void terminalc_install_interrupt_handler(void);
+bool terminalc_interrupt_requested(void);
+void terminalc_clear_interrupt(void);
 
 /* values */
 void terminalc_value_init(TerminalCValue *v, mpfr_prec_t bits);
@@ -156,6 +161,8 @@ void terminalc_poly_eval(TerminalCCalc *c, const TerminalCPolynomial *p, const T
 bool terminalc_poly_derivative(TerminalCCalc *c, const char *src_name, const char *dst_name);
 void terminalc_plot(TerminalCCalc *c, const char *expr, const char *lo, const char *hi);
 void terminalc_plot_svg(TerminalCCalc *c, const char *expr, const char *lo,
+                        const char *hi, const char *path);
+void terminalc_plot_csv(TerminalCCalc *c, const char *expr, const char *lo,
                         const char *hi, const char *path);
 
 /* CLI */

@@ -26,6 +26,7 @@ typedef struct {
 } TerminalCColor;
 
 void terminalc_color_init(TerminalCColor *c, bool force_off);
+void terminalc_color_force_on(TerminalCColor *c);
 void terminalc_color_enable_windows_vt(void);
 
 /* Global session palette (set once at startup / when color toggled). */
