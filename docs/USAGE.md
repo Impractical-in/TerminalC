@@ -90,6 +90,8 @@ calc> quit
 | `angle radians` / `angle degrees` | Trig mode |
 | `vars` | List variables |
 | `clear_vars` | Drop user variables |
+| `history` / `history clear` | Show or clear persistent command history |
+| `!!` / `!N` | Replay the last or numbered history entry |
 | `color on` / `color off` | Toggle color |
 | `advanced on` / `advanced off` | Per-eval time, memory, output size |
 | `mode advanced` / `mode normal` | Aliases for advanced on/off |
@@ -155,6 +157,7 @@ roots(p)                 # linear / quadratic
 
 plot(sin(x), x=-2*pi..2*pi)  # native popup (Windows/macOS): real lines + zoom
 plot(y=x, x=0..3)
+plot_save(sin(x);cos(x), x=0..2*pi, curves.svg)  # multi-curve SVG export
 ```
 
 On **Windows**, `plot(...)` opens a zoomable window drawn with **Win32 GDI**;
@@ -185,6 +188,11 @@ margin so the curve does not touch the frame.
 
 If stdout is not a TTY (pipes/tests), or `TERMINALC_ASCII_PLOT=1` is set, or the
 GUI cannot open, TerminalC falls back to the in-terminal ASCII plot.
+
+`plot_save(expr; expr, x=lo..hi, file.svg)` samples one or more expressions and
+writes a standalone SVG with axes, labels, legend, and separate curve colors.
+The semicolon separates curves; expressions remain evaluated with the active
+arbitrary precision before export.
 
 ### Base conversion examples
 
@@ -218,6 +226,7 @@ Color panels (when enabled) segment quadratic and polynomial output:
 | Variable | Effect |
 |----------|--------|
 | `NO_COLOR` | Disable color when set to any non-empty value |
+| `TERMINALC_HISTORY_FILE` | Override the REPL history path; set empty to disable persistence |
 
 ## Notes
 

@@ -77,6 +77,7 @@ set(TERMINALC_SOURCES
   src/series.c
   src/algebra.c
   src/plot.c
+  src/plot_export.c
   src/repl.c
 )
 
@@ -206,6 +207,20 @@ if(BUILD_TESTING)
       "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/plot_bounds.input"
       "-DTERMINALC_EXPECT=x: 1.000000 .. 9.000000"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+
+  add_test(NAME plot_svg_export
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_plot_export.cmake")
+
+  add_test(NAME history_session
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/history.input"
+      "-DTERMINALC_EXPECT=History cleared."
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+  set_tests_properties(history_session PROPERTIES
+    ENVIRONMENT "TERMINALC_HISTORY_FILE=")
 
   add_test(NAME help_topics_index
     COMMAND ${CMAKE_COMMAND}

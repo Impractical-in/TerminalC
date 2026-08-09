@@ -359,8 +359,10 @@ static const TerminalCHelpEntry g_help[] = {
         "expr - expression in x (also y=... form)\n"
         "lo - range start (expression)\n"
         "hi - range end (must be > lo)",
-        "  plot(sin(x), x=-pi..pi)\n  plot(y=x^2, x=-2..2)",
+        "  plot(sin(x), x=-pi..pi)\n  plot(y=x^2, x=-2..2)\n"
+        "  plot_save(sin(x);cos(x), x=0..2*pi, curves.svg)",
         "Hover curve for (x,y). Wheel zoom, drag pan, Esc close.\n"
+        "plot_save exports one or more semicolon-separated curves to standalone SVG.\n"
         "The x=lo..hi interval is sampled exactly; press 0 to reset after pan/zoom.\n"
         "The y view has a small auto-fit margin. TERMINALC_ASCII_PLOT=1 forces terminal ASCII."
     },

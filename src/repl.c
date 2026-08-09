@@ -7,7 +7,154 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { TERMINALC_FIB_LIST_MAX = 10000, TERMINALC_FIB_INDEX_MAX = 10000000 };
+#ifdef _WIN32
+#include <io.h>
+#define TERMINALC_REPL_ISATTY(fd) (_isatty(fd) != 0)
+#define TERMINALC_REPL_FILENO(stream) _fileno(stream)
+#else
+#include <unistd.h>
+#define TERMINALC_REPL_ISATTY(fd) (isatty(fd) != 0)
+#define TERMINALC_REPL_FILENO(stream) fileno(stream)
+#endif
+
+enum {
+    TERMINALC_FIB_LIST_MAX = 10000,
+    TERMINALC_FIB_INDEX_MAX = 10000000,
+    TERMINALC_HISTORY_MAX = 100
+};
+
+typedef struct {
+    char entries[TERMINALC_HISTORY_MAX][TERMINALC_LINE_MAX];
+    size_t count;
+    bool persistent;
+} TerminalCHistory;
+
+static bool history_is_interactive(void)
+{
+    return TERMINALC_REPL_ISATTY(TERMINALC_REPL_FILENO(stdin)) &&
+           TERMINALC_REPL_ISATTY(TERMINALC_REPL_FILENO(stdout));
+}
+
+static const char *history_file_path(void)
+{
+    const char *override = getenv("TERMINALC_HISTORY_FILE");
+    if (override)
+        return override;
+
+    static char path[TERMINALC_LINE_MAX];
+#ifdef _WIN32
+    const char *home = getenv("USERPROFILE");
+    if (!home)
+        home = getenv("HOMEPATH");
+#else
+    const char *home = getenv("HOME");
+#endif
+    if (!home || !home[0])
+        return NULL;
+    snprintf(path, sizeof path, "%s/.terminalc_history", home);
+    return path;
+}
+
+static void history_add(TerminalCHistory *history, const char *line)
+{
+    if (!line || !line[0])
+        return;
+    if (history->count > 0 &&
+        strcmp(history->entries[history->count - 1], line) == 0)
+        return;
+    if (history->count == TERMINALC_HISTORY_MAX) {
+        memmove(history->entries[0], history->entries[1],
+                (TERMINALC_HISTORY_MAX - 1) * sizeof history->entries[0]);
+        history->count--;
+    }
+    snprintf(history->entries[history->count], TERMINALC_LINE_MAX, "%s", line);
+    history->count++;
+}
+
+static void history_load(TerminalCHistory *history)
+{
+    if (!history->persistent)
+        return;
+    const char *path = history_file_path();
+    if (!path || !path[0])
+        return;
+    FILE *fp = fopen(path, "r");
+    if (!fp)
+        return;
+    char line[TERMINALC_LINE_MAX];
+    while (fgets(line, sizeof line, fp)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        history_add(history, line);
+    }
+    fclose(fp);
+}
+
+static void history_save(const TerminalCHistory *history)
+{
+    if (!history->persistent)
+        return;
+    const char *path = history_file_path();
+    if (!path || !path[0])
+        return;
+    FILE *fp = fopen(path, "w");
+    if (!fp)
+        return;
+    for (size_t i = 0; i < history->count; i++)
+        fprintf(fp, "%s\n", history->entries[i]);
+    fclose(fp);
+}
+
+static void history_print(const TerminalCHistory *history)
+{
+    if (history->count == 0) {
+        puts("(history is empty)");
+        return;
+    }
+    for (size_t i = 0; i < history->count; i++)
+        printf("%4zu  %s\n", i + 1, history->entries[i]);
+}
+
+static bool history_expand(const TerminalCHistory *history, char *line, size_t size)
+{
+    if (line[0] != '!')
+        return true;
+    size_t index = 0;
+    if (strcmp(line, "!!") == 0) {
+        if (history->count == 0) {
+            fprintf(stderr, "%sHistory is empty.%s\n", C_B_RED, C_RST);
+            return false;
+        }
+        index = history->count;
+    } else {
+        char *end = NULL;
+        unsigned long requested = strtoul(line + 1, &end, 10);
+        if (end == line + 1 || *end != '\0' || requested == 0 ||
+            requested > history->count) {
+            fprintf(stderr, "%sUnknown history entry '%s'.%s\n", C_B_RED, line,
+                    C_RST);
+            return false;
+        }
+        index = (size_t)requested;
+    }
+    snprintf(line, size, "%s", history->entries[index - 1]);
+    printf("%s%s%s\n", C_DIM, line, C_RST);
+    return true;
+}
+
+static bool handle_history_command(TerminalCHistory *history, char *line)
+{
+    if (strcmp(line, "history") == 0) {
+        history_print(history);
+        return true;
+    }
+    if (strcmp(line, "history clear") == 0) {
+        history->count = 0;
+        history_save(history);
+        puts("History cleared.");
+        return true;
+    }
+    return false;
+}
 
 static void trim_inplace(char *s)
 {
@@ -122,6 +269,8 @@ static void print_repl_help(void)
     puts("  angle radians|degrees     Trigonometric mode");
     puts("  vars                      List user variables");
     puts("  clear_vars                Clear user variables");
+    puts("  history [clear]           Show or clear persistent command history");
+    puts("  !! / !N                   Replay the last or numbered history entry");
     puts("  color on|off              Toggle ANSI color output");
     puts("  advanced on|off           Time / memory / output-size stats");
     puts("");
@@ -150,6 +299,7 @@ static void print_repl_help(void)
     puts("  p = poly([a, b, c, ...])   exact rational coefficients");
     puts("  degree(p)  evaluate(p, x)  derivative(p)  roots(p)");
     puts("  plot(expr, x=lo..hi)      native window on Windows/macOS; ASCII fallback");
+    puts("  plot_save(exprs, x=lo..hi, file.svg)  export one or more curves");
     puts("Type: help topics   or   help square / help matrix / help units");
 }
 
@@ -506,6 +656,67 @@ static bool handle_line(TerminalCCalc *c, char *line)
         return true;
     }
 
+    if (strncmp(line, "plot_save(", 10) == 0) {
+        /* plot_save(expr; expr, x=lo..hi, file.svg) */
+        char *end = strrchr(line, ')');
+        char *range = NULL;
+        for (char *p = line + 10; *p; p++) {
+            if (*p != ',')
+                continue;
+            char *q = p + 1;
+            while (isspace((unsigned char)*q))
+                q++;
+            if ((q[0] == 'x' || q[0] == 'X')) {
+                char *e = q + 1;
+                while (isspace((unsigned char)*e))
+                    e++;
+                if (*e == '=') {
+                    range = p;
+                    break;
+                }
+            }
+        }
+        char *dots = range ? strstr(range, "..") : NULL;
+        char *file_sep = dots ? strchr(dots + 2, ',') : NULL;
+        if (range && dots && file_sep && end && end > file_sep) {
+            *range = '\0';
+            *dots = '\0';
+            *file_sep = '\0';
+            *end = '\0';
+            char *xeq = range + 1;
+            while (isspace((unsigned char)*xeq))
+                xeq++;
+            xeq++;
+            while (isspace((unsigned char)*xeq))
+                xeq++;
+            if (*xeq == '=')
+                xeq++;
+            while (isspace((unsigned char)*xeq))
+                xeq++;
+            char *hi = dots + 2;
+            while (isspace((unsigned char)*hi))
+                hi++;
+            char *path = file_sep + 1;
+            while (isspace((unsigned char)*path))
+                path++;
+            size_t path_len = strlen(path);
+            if (path_len >= 2 &&
+                ((path[0] == '"' && path[path_len - 1] == '"') ||
+                 (path[0] == '\'' && path[path_len - 1] == '\''))) {
+                path[path_len - 1] = '\0';
+                path++;
+            }
+            terminalc_plot_svg(c, line + 10, xeq, hi, path);
+        } else {
+            fprintf(stderr,
+                    "%sUse: plot_save(expr; expr, x=lo..hi, file.svg)%s\n"
+                    "%s  example: plot_save(sin(x); cos(x), x=0..2*pi, curves.svg)%s\n",
+                    C_B_RED, C_RST, C_DIM, C_RST);
+            mark_script_error(c, "invalid plot export syntax");
+        }
+        return true;
+    }
+
     if (strncmp(line, "plot(", 5) == 0) {
         /* plot(expr, x=lo..hi)  — allows spaces around x= and y=expr form */
         char *end = strrchr(line, ')');
@@ -551,8 +762,10 @@ static bool handle_line(TerminalCCalc *c, char *line)
                     "%sUse: plot(expr, x=lo..hi)%s\n"
                     "%s  examples: plot(x, x=0..2)%s\n"
                     "%s            plot(y=x, x=0..2)%s\n"
-                    "%s            plot(sin(x), x=-pi..pi)%s\n",
-                    C_B_RED, C_RST, C_DIM, C_RST, C_DIM, C_RST, C_DIM, C_RST);
+                    "%s            plot(sin(x), x=-pi..pi)%s\n"
+                    "%s            plot_save(sin(x);cos(x), x=0..2*pi, curves.svg)%s\n",
+                    C_B_RED, C_RST, C_DIM, C_RST, C_DIM, C_RST, C_DIM, C_RST,
+                    C_DIM, C_RST);
             mark_script_error(c, "invalid plot syntax");
         }
         return true;
@@ -626,6 +839,10 @@ static bool handle_line(TerminalCCalc *c, char *line)
 int terminalc_repl(TerminalCCalc *c)
 {
     char line[TERMINALC_LINE_MAX];
+    TerminalCHistory history;
+    memset(&history, 0, sizeof history);
+    history.persistent = history_is_interactive();
+    history_load(&history);
 
     printf("%sTerminalC %s%s - arbitrary-precision terminal calculator\n",
            C_B_CYN, TERMINALC_VERSION_STRING, C_RST);
@@ -641,6 +858,15 @@ int terminalc_repl(TerminalCCalc *c)
             break;
         }
         line[strcspn(line, "\r\n")] = '\0';
+        trim_inplace(line);
+        if (!line[0])
+            continue;
+        if (handle_history_command(&history, line))
+            continue;
+        if (!history_expand(&history, line, sizeof line))
+            continue;
+        history_add(&history, line);
+        history_save(&history);
         if (!handle_line(c, line))
             break;
     }
@@ -732,6 +958,7 @@ void terminalc_print_help(void)
     puts("  precision [N] | digits N");
     puts("  angle radians|degrees");
     puts("  vars | clear_vars");
+    puts("  history [clear] | !! | !N");
     puts("  color on|off");
     puts("  advanced on|off         time / result mem / output size");
     puts("");
@@ -762,6 +989,7 @@ void terminalc_print_help(void)
     puts("  p = poly([a, b, c, ...])     exact rational coefficients");
     puts("  degree(p)  evaluate(p, x)  derivative(p)  roots(p)");
     puts("  plot(expr, x=lower..upper)   native window (Windows/macOS) or ASCII");
+    puts("  plot_save(exprs, x=lo..hi, file.svg)  multi-curve SVG export");
     puts("                               wheel zoom, drag pan; Esc/q closes");
     puts("                               TERMINALC_ASCII_PLOT=1 -> terminal only");
     puts("");

@@ -15,6 +15,7 @@
 | `register_catalog.cmake` | Loads TSV → one CTest per row |
 | `run_eval_case.cmake` | Runs a single eval case |
 | `run_repl_expect.cmake` | REPL stdin fixture + substring expect |
+| `run_plot_export.cmake` | SVG export smoke test |
 | `*.input` | REPL session scripts |
 | `README.md` | This file |
 

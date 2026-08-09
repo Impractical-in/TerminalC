@@ -154,6 +154,8 @@ TerminalCPolynomial *terminalc_find_poly(TerminalCCalc *c, const char *name);
 void terminalc_poly_eval(TerminalCCalc *c, const TerminalCPolynomial *p, const TerminalCValue *x, mpfr_t out);
 bool terminalc_poly_derivative(TerminalCCalc *c, const char *src_name, const char *dst_name);
 void terminalc_plot(TerminalCCalc *c, const char *expr, const char *lo, const char *hi);
+void terminalc_plot_svg(TerminalCCalc *c, const char *expr, const char *lo,
+                        const char *hi, const char *path);
 
 /* CLI */
 void terminalc_print_help(void);
