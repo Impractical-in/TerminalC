@@ -8,10 +8,12 @@
 #include <string.h>
 
 #ifdef _WIN32
+#include <conio.h>
 #include <io.h>
 #define TERMINALC_REPL_ISATTY(fd) (_isatty(fd) != 0)
 #define TERMINALC_REPL_FILENO(stream) _fileno(stream)
 #else
+#include <termios.h>
 #include <unistd.h>
 #define TERMINALC_REPL_ISATTY(fd) (isatty(fd) != 0)
 #define TERMINALC_REPL_FILENO(stream) fileno(stream)
@@ -156,6 +158,248 @@ static bool handle_history_command(TerminalCHistory *history, char *line)
     return false;
 }
 
+enum {
+    TERMINALC_REPL_KEY_EOF = -1,
+    TERMINALC_REPL_KEY_NONE = -2,
+    TERMINALC_REPL_KEY_ENTER = -3,
+    TERMINALC_REPL_KEY_BACKSPACE = -4,
+    TERMINALC_REPL_KEY_CANCEL = -5,
+    TERMINALC_REPL_KEY_UP = -6,
+    TERMINALC_REPL_KEY_DOWN = -7,
+    TERMINALC_REPL_KEY_LEFT = -8,
+    TERMINALC_REPL_KEY_RIGHT = -9,
+    TERMINALC_REPL_KEY_HOME = -10,
+    TERMINALC_REPL_KEY_END = -11
+};
+
+static int repl_read_byte(void)
+{
+#ifdef _WIN32
+    return _getch();
+#else
+    unsigned char byte = 0;
+    ssize_t n = read(TERMINALC_REPL_FILENO(stdin), &byte, 1);
+    return n == 1 ? (int)byte : TERMINALC_REPL_KEY_EOF;
+#endif
+}
+
+static int repl_read_key(void)
+{
+    int ch = repl_read_byte();
+    if (ch == TERMINALC_REPL_KEY_EOF)
+        return TERMINALC_REPL_KEY_EOF;
+#ifdef _WIN32
+    if (ch == 0 || ch == 224) {
+        switch (repl_read_byte()) {
+        case 72: return TERMINALC_REPL_KEY_UP;
+        case 80: return TERMINALC_REPL_KEY_DOWN;
+        case 75: return TERMINALC_REPL_KEY_LEFT;
+        case 77: return TERMINALC_REPL_KEY_RIGHT;
+        case 71: return TERMINALC_REPL_KEY_HOME;
+        case 79: return TERMINALC_REPL_KEY_END;
+        default: return TERMINALC_REPL_KEY_NONE;
+        }
+    }
+#else
+    if (ch == 27) {
+        int first = repl_read_byte();
+        if (first == '[' || first == 'O') {
+            switch (repl_read_byte()) {
+            case 'A': return TERMINALC_REPL_KEY_UP;
+            case 'B': return TERMINALC_REPL_KEY_DOWN;
+            case 'C': return TERMINALC_REPL_KEY_RIGHT;
+            case 'D': return TERMINALC_REPL_KEY_LEFT;
+            case 'H': return TERMINALC_REPL_KEY_HOME;
+            case 'F': return TERMINALC_REPL_KEY_END;
+            default: return TERMINALC_REPL_KEY_NONE;
+            }
+        }
+        return TERMINALC_REPL_KEY_NONE;
+    }
+#endif
+    if (ch == '\r' || ch == '\n')
+        return TERMINALC_REPL_KEY_ENTER;
+    if (ch == 8 || ch == 127)
+        return TERMINALC_REPL_KEY_BACKSPACE;
+    if (ch == 3)
+        return TERMINALC_REPL_KEY_CANCEL;
+    if (ch == 4)
+        return TERMINALC_REPL_KEY_EOF;
+    return ch >= 32 ? ch : TERMINALC_REPL_KEY_NONE;
+}
+
+static void repl_print_prompt(void)
+{
+    printf("%scalc>%s ", C_B_CYN, C_RST);
+}
+
+static void repl_redraw_line(const char *line, size_t length, size_t cursor,
+                             size_t *painted)
+{
+    fputc('\r', stdout);
+    repl_print_prompt();
+    if (length > 0)
+        fwrite(line, 1, length, stdout);
+    if (*painted > length) {
+        for (size_t i = length; i < *painted; i++)
+            fputc(' ', stdout);
+        for (size_t i = length; i < *painted; i++)
+            fputc('\b', stdout);
+    }
+    for (size_t i = cursor; i < length; i++)
+        fputc('\b', stdout);
+    fflush(stdout);
+    *painted = length;
+}
+
+#ifndef _WIN32
+static bool repl_begin_raw_input(struct termios *saved)
+{
+    int fd = TERMINALC_REPL_FILENO(stdin);
+    if (tcgetattr(fd, saved) != 0)
+        return false;
+    struct termios raw = *saved;
+    raw.c_lflag &= (tcflag_t)~(ICANON | ECHO | ISIG);
+    raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 0;
+    return tcsetattr(fd, TCSANOW, &raw) == 0;
+}
+
+static void repl_end_raw_input(const struct termios *saved)
+{
+    tcsetattr(TERMINALC_REPL_FILENO(stdin), TCSANOW, saved);
+}
+#endif
+
+static bool repl_read_line(TerminalCHistory *history, char *line, size_t size)
+{
+    if (!history->persistent)
+        return fgets(line, size, stdin) != NULL;
+
+#ifndef _WIN32
+    struct termios saved;
+    if (!repl_begin_raw_input(&saved))
+        return fgets(line, size, stdin) != NULL;
+#endif
+
+    char draft[TERMINALC_LINE_MAX];
+    size_t length = 0;
+    size_t cursor = 0;
+    size_t painted = 0;
+    size_t history_cursor = history->count;
+    bool draft_saved = false;
+    line[0] = '\0';
+
+    while (1) {
+        int key = repl_read_key();
+        if (key == TERMINALC_REPL_KEY_ENTER) {
+#ifndef _WIN32
+            repl_end_raw_input(&saved);
+#endif
+            repl_redraw_line(line, length, length, &painted);
+            putchar('\n');
+            line[length] = '\0';
+            return true;
+        }
+        if (key == TERMINALC_REPL_KEY_EOF) {
+#ifndef _WIN32
+            repl_end_raw_input(&saved);
+#endif
+            if (length == 0) {
+                putchar('\n');
+                return false;
+            }
+            repl_redraw_line(line, length, length, &painted);
+            putchar('\n');
+            line[length] = '\0';
+            return true;
+        }
+        if (key == TERMINALC_REPL_KEY_CANCEL) {
+#ifndef _WIN32
+            repl_end_raw_input(&saved);
+#endif
+            repl_redraw_line("", 0, 0, &painted);
+            puts("^C");
+            line[0] = '\0';
+            return true;
+        }
+
+        if (key == TERMINALC_REPL_KEY_UP) {
+            if (history_cursor == history->count) {
+                snprintf(draft, sizeof draft, "%s", line);
+                draft_saved = true;
+            }
+            if (history_cursor > 0) {
+                history_cursor--;
+                snprintf(line, size, "%s", history->entries[history_cursor]);
+                length = strlen(line);
+                cursor = length;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_DOWN) {
+            if (history_cursor < history->count) {
+                history_cursor++;
+                if (history_cursor == history->count) {
+                    snprintf(line, size, "%s", draft_saved ? draft : "");
+                } else {
+                    snprintf(line, size, "%s", history->entries[history_cursor]);
+                }
+                length = strlen(line);
+                cursor = length;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_LEFT) {
+            if (cursor > 0) {
+                cursor--;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_RIGHT) {
+            if (cursor < length) {
+                cursor++;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_HOME) {
+            cursor = 0;
+            repl_redraw_line(line, length, cursor, &painted);
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_END) {
+            cursor = length;
+            repl_redraw_line(line, length, cursor, &painted);
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_BACKSPACE) {
+            if (cursor > 0) {
+                memmove(line + cursor - 1, line + cursor, length - cursor + 1);
+                cursor--;
+                length--;
+                history_cursor = history->count;
+                draft_saved = false;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key >= 32 && key < 127 && length + 1 < size) {
+            memmove(line + cursor + 1, line + cursor, length - cursor + 1);
+            line[cursor] = (char)key;
+            cursor++;
+            length++;
+            history_cursor = history->count;
+            draft_saved = false;
+            repl_redraw_line(line, length, cursor, &painted);
+        }
+    }
+}
+
 static void trim_inplace(char *s)
 {
     char *start = s;
@@ -271,6 +515,7 @@ static void print_repl_help(void)
     puts("  clear_vars                Clear user variables");
     puts("  history [clear]           Show or clear persistent command history");
     puts("  !! / !N                   Replay the last or numbered history entry");
+    puts("  Up/Down arrows            Browse history; Left/Right edit the line");
     puts("  color on|off              Toggle ANSI color output");
     puts("  advanced on|off           Time / memory / output-size stats");
     puts("");
@@ -851,9 +1096,9 @@ int terminalc_repl(TerminalCCalc *c)
            C_DIM, c->digits, C_B_CYN, C_DIM, C_B_CYN, C_DIM, C_RST);
 
     while (1) {
-        printf("%scalc>%s ", C_B_CYN, C_RST);
+        repl_print_prompt();
         fflush(stdout);
-        if (!fgets(line, sizeof line, stdin)) {
+        if (!repl_read_line(&history, line, sizeof line)) {
             putchar('\n');
             break;
         }
@@ -959,6 +1204,7 @@ void terminalc_print_help(void)
     puts("  angle radians|degrees");
     puts("  vars | clear_vars");
     puts("  history [clear] | !! | !N");
+    puts("  Up/Down arrows browse history; Left/Right edit the current line");
     puts("  color on|off");
     puts("  advanced on|off         time / result mem / output size");
     puts("");

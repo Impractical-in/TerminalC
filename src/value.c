@@ -238,15 +238,30 @@ static bool is_plain_integer_str(const char *s)
     return true;
 }
 
-/* Relative tolerance for nice-form matching: ~ half a unit in the last display digit. */
+/* Tolerance for display-level nice-form matching: half a unit in the last digit. */
 static void set_match_tol(mpfr_t tol, int digits, mpfr_prec_t bits)
 {
     (void)bits;
-    int d = digits > 2 ? digits - 1 : digits;
+    int d = digits > 0 ? digits : 1;
     if (d > 40)
         d = 40; /* avoid pathological false matches at huge precision */
     mpfr_set_si(tol, -d, MPFR_RNDN);
     mpfr_exp10(tol, tol, MPFR_RNDN);
+    mpfr_div_ui(tol, tol, 2, MPFR_RNDN);
+}
+
+/* Tighter tolerance for recovering a genuine rational or closed form. */
+static void set_recovery_tol(mpfr_t tol, int digits, mpfr_prec_t bits)
+{
+    (void)bits;
+    int d = digits + 4;
+    if (d < 1)
+        d = 1;
+    if (d > 40)
+        d = 40;
+    mpfr_set_si(tol, -d, MPFR_RNDN);
+    mpfr_exp10(tol, tol, MPFR_RNDN);
+    mpfr_div_ui(tol, tol, 2, MPFR_RNDN);
 }
 
 static bool nearly_equal(const mpfr_t a, const mpfr_t b, const mpfr_t tol)
@@ -389,7 +404,7 @@ static bool try_nice_form(const TerminalCCalc *c, const mpfr_t x, char *buf, siz
     mpfr_init2(cand, c->bits);
     mpfr_init2(s, c->bits);
     mpfr_init2(tmp, c->bits);
-    set_match_tol(tol, c->digits, c->bits);
+    set_recovery_tol(tol, c->digits, c->bits);
 
     /* Exact / display zero */
     if (rounds_to_display_zero(x, c->digits) || mpfr_zero_p(x)) {
@@ -857,7 +872,7 @@ void terminalc_print_value(TerminalCCalc *c, const TerminalCValue *v)
     {
         mpfr_t tol;
         mpfr_init2(tol, c->bits);
-        set_match_tol(tol, c->digits, c->bits);
+        set_recovery_tol(tol, c->digits, c->bits);
         mpq_t q;
         mpq_init(q);
         /* Allow larger denominators when more digits are requested. */

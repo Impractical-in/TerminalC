@@ -29,7 +29,7 @@ terminalc --eval "1/3+2/7"
 - Interactive plots: `plot(sin(x), x=-2*pi..2*pi)` — **Windows/macOS native popup** with real
   vector lines, wheel zoom / drag pan (no extra graphics library); ASCII fallback
 - SVG plot export: `plot_save(sin(x);cos(x), x=0..2*pi, curves.svg)` for reports and notebooks
-- Persistent REPL history with `history`, `!!`, and numbered `!N` replay
+- Persistent REPL history with `history`, `!!`, numbered `!N` replay, and arrow-key editing
 - Matrices/tensors (1D–4D): `[1,2;3,4]`, `eye`, `zeros`, scalar broadcasting,
   element-wise unary math,
   `det`, `inv`, `linsolve`

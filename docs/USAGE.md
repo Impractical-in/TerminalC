@@ -92,6 +92,7 @@ calc> quit
 | `clear_vars` | Drop user variables |
 | `history` / `history clear` | Show or clear persistent command history |
 | `!!` / `!N` | Replay the last or numbered history entry |
+| Up/Down arrows | Browse history; Left/Right, Home, and End edit the current line |
 | `color on` / `color off` | Toggle color |
 | `advanced on` / `advanced off` | Per-eval time, memory, output size |
 | `mode advanced` / `mode normal` | Aliases for advanced on/off |
