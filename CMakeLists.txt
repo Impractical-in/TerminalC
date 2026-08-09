@@ -222,6 +222,20 @@ if(BUILD_TESTING)
   set_tests_properties(history_session PROPERTIES
     ENVIRONMENT "TERMINALC_HISTORY_FILE=")
 
+  add_test(NAME easter_egg_greeting
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/easter_eggs.input"
+      "-DTERMINALC_EXPECT=Hi there! Welcome to TerminalC."
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+
+  add_test(NAME easter_egg_farewell
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/easter_eggs.input"
+      "-DTERMINALC_EXPECT=Bye! Thanks for using TerminalC."
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+
   add_test(NAME help_topics_index
     COMMAND ${CMAKE_COMMAND}
       "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"

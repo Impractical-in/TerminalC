@@ -412,6 +412,17 @@ static void trim_inplace(char *s)
         s[--n] = '\0';
 }
 
+static bool line_equals_ci(const char *a, const char *b)
+{
+    while (*a && *b) {
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b))
+            return false;
+        a++;
+        b++;
+    }
+    return *a == '\0' && *b == '\0';
+}
+
 static void strip_script_comment(char *s)
 {
     for (size_t i = 0; s[i]; i++) {
@@ -587,6 +598,15 @@ static bool handle_line(TerminalCCalc *c, char *line)
     if (strcmp(line, "quit") == 0 || strcmp(line, "exit") == 0 ||
         strcmp(line, ":q") == 0)
         return false;
+
+    if (line_equals_ci(line, "hi")) {
+        puts("Hi there! Welcome to TerminalC.");
+        return true;
+    }
+    if (line_equals_ci(line, "bye")) {
+        puts("Bye! Thanks for using TerminalC.");
+        return false;
+    }
 
     if (strcmp(line, "help") == 0 || strcmp(line, "?") == 0 ||
         strcmp(line, ":help") == 0) {
