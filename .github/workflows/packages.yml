@@ -1,0 +1,105 @@
+name: TerminalC packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  linux-native:
+    name: Linux DEB and TGZ
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libgmp-dev libmpfr-dev
+      - name: Build and package
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build --parallel
+          cpack --config build/CPackConfig.cmake -G DEB
+          cpack --config build/CPackConfig.cmake -G TGZ
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terminalc-linux
+          path: |
+            build/*.deb
+            build/*.tar.gz
+
+  macos-native:
+    name: macOS ZIP and PKG
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install cmake ninja gmp mpfr
+      - name: Build and package
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix gmp);$(brew --prefix mpfr)"
+          cmake --build build --parallel
+          cpack --config build/CPackConfig.cmake -G ZIP
+          cpack --config build/CPackConfig.cmake -G productbuild
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terminalc-macos
+          path: |
+            build/*.zip
+            build/*.pkg
+
+  windows-native:
+    name: Windows ZIP and NSIS
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-gmp
+            mingw-w64-x86_64-mpfr
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --no-progress --yes
+      - name: Build and package
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DTERMINALC_ENABLE_LTO=ON
+          cmake --build build --parallel
+          export PATH="/c/Program Files (x86)/NSIS:$PATH"
+          cpack --config build/CPackConfig.cmake -G ZIP
+          cpack --config build/CPackConfig.cmake -G NSIS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terminalc-windows
+          path: |
+            build/*.zip
+            build/*.exe
+
+  python-source:
+    name: Python source distribution
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist
+        run: |
+          python -m pip install --upgrade build
+          python -m build --sdist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terminalc-python-sdist
+          path: dist/*.tar.gz

@@ -90,9 +90,29 @@ calc> quit
 | `angle radians` / `angle degrees` | Trig mode |
 | `vars` | List variables |
 | `clear_vars` | Drop user variables |
+| `history` / `history clear` | Show or clear persistent command history |
+| `!!` / `!N` | Replay the last or numbered history entry |
+| Up/Down arrows | Browse history; Left/Right, Home, and End edit the current line |
+| Ctrl-D / Ctrl-L / Ctrl-R | Exit at an empty prompt / clear screen / recall previous history entry |
+| Ctrl-C | Cancel the current input; press twice at an empty prompt to exit TerminalC |
+| `hi` / `bye` | Friendly greeting or farewell easter eggs |
 | `color on` / `color off` | Toggle color |
 | `advanced on` / `advanced off` | Per-eval time, memory, output size |
 | `mode advanced` / `mode normal` | Aliases for advanced on/off |
+
+### Startup configuration
+
+TerminalC loads `~/.terminalcrc` at startup. Set `TERMINALC_CONFIG` to use a
+different file, or set it to an empty value to disable configuration loading.
+Supported entries are `precision N`, `angle radians|degrees`,
+`advanced on|off`, `format plain|json|csv`, and `color off`:
+
+```text
+precision 20
+angle degrees
+format plain
+advanced off
+```
 
 ### Expressions
 
@@ -153,12 +173,14 @@ evaluate(p, 5)
 derivative(p)            # stores p_d
 roots(p)                 # linear / quadratic
 
-plot(sin(x), x=-2*pi..2*pi)  # interactive popup (Windows): real lines + zoom
+plot(sin(x), x=-2*pi..2*pi)  # native popup (Windows/macOS): real lines + zoom
 plot(y=x, x=0..3)
+plot_save(sin(x);cos(x), x=0..2*pi, curves.svg)  # multi-curve SVG export
 ```
 
-On **Windows**, `plot(...)` opens a zoomable window drawn with **Win32 GDI**
-(actual vector lines — no gnuplot/SDL/Cairo required):
+On **Windows**, `plot(...)` opens a zoomable window drawn with **Win32 GDI**;
+on **macOS**, it opens a native **Cocoa** window. Both use actual vector
+lines — no gnuplot/SDL/Cairo required:
 
 - **High resolution**: ~3 samples per horizontal pixel (2.5k–10k points)
 - **Adaptive ticks**: major/minor grid + numeric labels that refine as you zoom
@@ -184,6 +206,12 @@ margin so the curve does not touch the frame.
 
 If stdout is not a TTY (pipes/tests), or `TERMINALC_ASCII_PLOT=1` is set, or the
 GUI cannot open, TerminalC falls back to the in-terminal ASCII plot.
+
+`plot_save(expr; expr, x=lo..hi, file.svg)` samples one or more expressions and
+writes a standalone SVG with axes, labels, legend, and separate curve colors.
+Use a `.csv` path to export the sampled x/y data instead. The semicolon
+separates curves; expressions remain evaluated with the active arbitrary
+precision before export.
 
 ### Base conversion examples
 
@@ -217,6 +245,7 @@ Color panels (when enabled) segment quadratic and polynomial output:
 | Variable | Effect |
 |----------|--------|
 | `NO_COLOR` | Disable color when set to any non-empty value |
+| `TERMINALC_HISTORY_FILE` | Override the REPL history path; set empty to disable persistence |
 
 ## Notes
 
@@ -224,5 +253,8 @@ Color panels (when enabled) segment quadratic and polynomial output:
 - **Display rules**
   - **Integers** (exact or integer-valued reals like `log(1000)`) print as plain integers — no `3.000…` padding and no precision banner.
   - **`precision N`** applies only to **decimal / float** lines.
+  - Non-exact trig values near an integer do not carry across that boundary:
+    `sind(89.999999)` displays `0.9999` at precision 4 and `0.9999999999` at
+    precision 10.
   - **Rationals** (exact or recovered, e.g. `1/3`, `sin(pi/6)` → `1/2`) show **Exact:** fraction **and** **Decimal:** expansion.
   - Closed forms like `sqrt(2)` show **Nice:** + **Decimal:**.

@@ -141,6 +141,19 @@ multiplication; tensor modulo is intentionally rejected. Resource limits
 reject negative dimensions, excessive tensor cells, and incompatible shapes
 with an error instead of allocating unbounded memory.
 
+## Signal processing
+
+| Signature | Arguments / example |
+|---|---|
+| `fft(vector)` / `dft(vector)` | Forward discrete Fourier transform. Power-of-two lengths use radix-2 FFT; other lengths use a direct DFT. |
+| `ifft(signal)` / `idft(signal)` | Inverse transform of the 2 x N complex tensor returned by `fft`. |
+| `real(signal)` / `imag(signal)` | Extract the real or imaginary row as a vector. |
+
+Complex vectors are represented without introducing a separate complex scalar
+type: row 0 is real and row 1 is imaginary. For example,
+`real(ifft(fft([1,2,3,4])))` reconstructs the original vector. Signal lengths
+are limited to 4096 samples to keep arbitrary-precision work bounded.
+
 ## Sequences, sums, and primes
 
 For AP/GP/HP, a is the first term, d is the difference (or r the ratio), and
@@ -247,10 +260,13 @@ for `--eval`; use the interactive form shown in each example.
 | derivative(p) | Store the derivative as p_d. |
 | roots(p) | Display linear or quadratic polynomial roots. |
 | plot(expr, x=lo..hi) | Plot free-variable expression; for example plot(sin(x),x=-pi..pi). |
+| plot_save(exprs, x=lo..hi, file.svg) | Export one or more semicolon-separated curves as SVG. |
+| plot_save(exprs, x=lo..hi, file.csv) | Export sampled x/y data for one or more curves as CSV. |
 
-On Windows, plots use a Win32 GDI window with zoom, pan, hover readout, and
-auto-fit. Pipes, tests, non-Windows builds, and TERMINALC_ASCII_PLOT=1 use the
-terminal ASCII renderer.
+On Windows, plots use a Win32 GDI window; on macOS, they use a native Cocoa
+window. Both provide zoom, pan, hover readout, and auto-fit. Pipes, tests,
+unsupported desktop builds, and TERMINALC_ASCII_PLOT=1 use the terminal
+ASCII renderer.
 
 ## Session-only commands
 

@@ -582,6 +582,11 @@ static bool tanh_sinh_level(IntegralContext *ctx, mpfr_srcptr a,
     const unsigned long max_k = 10000;
     bool ok = true;
     for (unsigned long k = 0; k <= max_k; k++) {
+        if (terminalc_interrupt_requested()) {
+            terminalc_fail(ctx->calc, "calculation interrupted by Ctrl-C");
+            ok = false;
+            break;
+        }
         mpfr_set_ui(t, k, MPFR_RNDN);
         mpfr_mul(t, t, h, MPFR_RNDN);
         mpfr_sinh(sinh_t, t, MPFR_RNDN);
@@ -676,6 +681,11 @@ bool terminalc_numeric_integral(TerminalCCalc *c, const char *expr,
     if (max_levels > 18)
         max_levels = 18;
     for (int level = 0; level < max_levels; level++) {
+        if (terminalc_interrupt_requested()) {
+            terminalc_fail(c, "calculation interrupted by Ctrl-C");
+            ok = false;
+            break;
+        }
         if (!tanh_sinh_level(&ctx, a, b, h, tolerance, current)) {
             ok = false;
             break;
@@ -747,6 +757,10 @@ bool terminalc_numeric_solve(TerminalCCalc *c, const char *expr,
         } else {
             ok = false;
             for (int i = 0; i < max_iter; i++) {
+                if (terminalc_interrupt_requested()) {
+                    terminalc_fail(c, "calculation interrupted by Ctrl-C");
+                    break;
+                }
                 mpfr_add(m, a, b, MPFR_RNDN);
                 mpfr_div_ui(m, m, 2, MPFR_RNDN);
                 if (!eval_at_mpfr(c, expr, m, fm))
@@ -774,6 +788,10 @@ bool terminalc_numeric_solve(TerminalCCalc *c, const char *expr,
         mpfr_set(x, a, MPFR_RNDN);
         ok = false;
         for (int i = 0; i < max_iter; i++) {
+            if (terminalc_interrupt_requested()) {
+                terminalc_fail(c, "calculation interrupted by Ctrl-C");
+                break;
+            }
             if (!eval_at_mpfr(c, expr, x, fx))
                 break;
             mpfr_abs(width, fx, MPFR_RNDN);

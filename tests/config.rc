@@ -1,0 +1,4 @@
+# Startup settings used by the configuration regression test.
+precision 9
+angle degrees
+format plain

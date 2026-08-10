@@ -219,8 +219,8 @@ void terminalc_plot(TerminalCCalc *c, const char *expr_in, const char *lo, const
     double xmax = mpfr_get_d(h, MPFR_RNDN);
 
     /*
-     * Interactive popup with real vector lines (Win32 GDI) when stdout is a
-     * TTY. Force ASCII with TERMINALC_ASCII_PLOT=1. Non-Windows → ASCII only.
+     * Interactive popup with real vector lines on supported desktop targets
+     * when stdout is a TTY. Force ASCII with TERMINALC_ASCII_PLOT=1.
      */
     /* GUI only for fully interactive sessions (both stdin/stdout are TTYs). */
     if (TERMINALC_ISATTY_OUT() && TERMINALC_ISATTY_IN() && !getenv("TERMINALC_ASCII_PLOT")) {

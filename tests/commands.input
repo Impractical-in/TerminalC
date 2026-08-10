@@ -1,0 +1,21 @@
+help
+help functions
+precision
+precision 7
+angle degrees
+sind(89)
+angle radians
+a = 1/3
+vars
+clear_vars
+vars
+advanced
+advanced on
+1+1
+advanced off
+color off
+history
+history clear
+history
+hi
+bye

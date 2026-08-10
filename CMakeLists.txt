@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 if(WIN32)
   project(TerminalC VERSION 1.0.0 LANGUAGES C RC)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  project(TerminalC VERSION 1.0.0 LANGUAGES C OBJC)
 else()
   project(TerminalC VERSION 1.0.0 LANGUAGES C)
 endif()
@@ -64,6 +66,8 @@ set(TERMINALC_SOURCES
   src/meta.c
   src/help.c
   src/color.c
+  src/config.c
+  src/interrupt.c
   src/value.c
   src/advanced.c
   src/calc.c
@@ -73,16 +77,20 @@ set(TERMINALC_SOURCES
   src/linalg.c
   src/domains.c
   src/series.c
+  src/signal.c
   src/algebra.c
   src/plot.c
+  src/plot_export.c
   src/repl.c
 )
 
-# Interactive plot window: Win32 GDI on Windows (no extra deps); stub elsewhere.
+# Interactive plot window: native system UI on Windows and macOS; stub elsewhere.
 if(WIN32)
   list(APPEND TERMINALC_SOURCES src/plot_win32.c)
   # PE VERSIONINFO — Company/Developer visible in file Properties, not in REPL.
   list(APPEND TERMINALC_SOURCES src/terminalc.rc)
+elseif(APPLE)
+  list(APPEND TERMINALC_SOURCES src/plot_macos.m)
 else()
   list(APPEND TERMINALC_SOURCES src/plot_gui_stub.c)
 endif()
@@ -98,6 +106,12 @@ target_include_directories(terminalc
 target_link_libraries(terminalc PRIVATE ${MPFR_LIBRARY} ${GMP_LIBRARY})
 if(WIN32)
   target_link_libraries(terminalc PRIVATE gdi32 user32 psapi)
+elseif(APPLE)
+  target_link_libraries(terminalc PRIVATE "-framework Cocoa")
+  # Cocoa headers are system code; keep project warnings fatal without making
+  # SDK compatibility annotations fail the build on newer Apple Clang.
+  set_source_files_properties(src/plot_macos.m PROPERTIES
+    COMPILE_OPTIONS "-Wno-error=pedantic")
 endif()
 target_compile_definitions(terminalc PRIVATE TERMINALC_VERSION="${TERMINALC_RELEASE_VERSION}")
 
@@ -150,19 +164,44 @@ install(FILES include/terminalc.h DESTINATION include)
 install(FILES README.md LICENSE docs/USAGE.md docs/FUNCTIONS.md DESTINATION .)
 install(DIRECTORY examples DESTINATION .)
 
-# A self-contained ZIP is the portable, zero-configuration release artifact.
-# Windows builds include the GMP/MPFR/runtime DLLs copied above.
+# Platform-native packages. Windows bundles the MinGW/GMP/MPFR runtime DLLs;
+# macOS emits an unsigned .pkg and ZIP; Linux emits DEB and TGZ packages.
 set(CPACK_PACKAGE_NAME "TerminalC")
 set(CPACK_PACKAGE_VENDOR "Impractical.in")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Exact, arbitrary-precision terminal calculator")
 set(CPACK_PACKAGE_VERSION "${TERMINALC_RELEASE_VERSION}")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_GENERATOR "ZIP")
+if(APPLE)
+  # productbuild accepts text/RTF/HTML resource files, but not extensionless
+  # LICENSE files. The installed tree still ships the canonical LICENSE.
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/LICENSE.txt")
+else()
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+endif()
 set(CPACK_PACKAGE_FILE_NAME "TerminalC-${TERMINALC_RELEASE_VERSION}-${CMAKE_SYSTEM_NAME}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "TerminalC")
+set(CPACK_STRIP_FILES TRUE)
+if(WIN32)
+  set(CPACK_GENERATOR "ZIP;NSIS")
+  set(CPACK_NSIS_DISPLAY_NAME "TerminalC")
+  set(CPACK_NSIS_PACKAGE_NAME "TerminalC")
+  set(CPACK_NSIS_HELP_LINK "https://github.com/Impractical-in/TerminalC")
+  set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/Impractical-in/TerminalC")
+  set(CPACK_NSIS_MODIFY_PATH OFF)
+elseif(APPLE)
+  set(CPACK_GENERATOR "ZIP;productbuild")
+  set(CPACK_PRODUCTBUILD_IDENTIFIER "in.impractical.terminalc")
+else()
+  set(CPACK_GENERATOR "TGZ;DEB")
+  set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Impractical.in")
+  set(CPACK_DEBIAN_PACKAGE_SECTION "math")
+  set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/Impractical-in/TerminalC")
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+endif()
 include(CPack)
 
 include(CTest)
 if(BUILD_TESTING)
+  find_package(Python3 QUIET COMPONENTS Interpreter)
   # ---- Bulk regression catalog (hundreds of --eval cases) ----
   include(${CMAKE_CURRENT_SOURCE_DIR}/tests/register_catalog.cmake)
 
@@ -196,6 +235,81 @@ if(BUILD_TESTING)
       "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/plot_bounds.input"
       "-DTERMINALC_EXPECT=x: 1.000000 .. 9.000000"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+
+  add_test(NAME plot_svg_export
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_plot_export.cmake")
+
+  add_test(NAME plot_ascii_graph
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_plot_graph.cmake")
+
+  add_test(NAME command_matrix
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/commands.input"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_matrix.cmake")
+  set_tests_properties(command_matrix PROPERTIES
+    ENVIRONMENT "TERMINALC_HISTORY_FILE=")
+
+  # End-to-end callable matrix: 30 independent CLI cases for every public
+  # expression function, including aliases and precision variants. Keep this
+  # as one bounded test so small machines do not pay 4,000 process-launch
+  # entries in CTest's scheduler; the runner records every command separately.
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME function_matrix
+      COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/function_matrix.py"
+        "--exe=$<TARGET_FILE:terminalc>"
+        "--output=${CMAKE_CURRENT_BINARY_DIR}/function-matrix-results"
+        "--jobs=1")
+    set_tests_properties(function_matrix PROPERTIES
+      TIMEOUT 600
+      ENVIRONMENT "NO_COLOR=1;TERMINALC_CONFIG=;TERMINALC_HISTORY_FILE=")
+    add_test(NAME graph_matrix
+      COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/graph_matrix.py"
+        "--exe=$<TARGET_FILE:terminalc>"
+        "--output=${CMAKE_CURRENT_BINARY_DIR}/graph-matrix-results")
+    set_tests_properties(graph_matrix PROPERTIES
+      TIMEOUT 300
+      ENVIRONMENT "NO_COLOR=1;TERMINALC_CONFIG=;TERMINALC_HISTORY_FILE=;TERMINALC_ASCII_PLOT=1")
+  endif()
+
+  add_test(NAME history_session
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/history.input"
+      "-DTERMINALC_EXPECT=History cleared."
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+  set_tests_properties(history_session PROPERTIES
+    ENVIRONMENT "TERMINALC_HISTORY_FILE=")
+
+  add_test(NAME easter_egg_greeting
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/easter_eggs.input"
+      "-DTERMINALC_EXPECT=Hi there! Welcome to TerminalC."
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+
+  add_test(NAME easter_egg_farewell
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/easter_eggs.input"
+      "-DTERMINALC_EXPECT=Bye! Thanks for using TerminalC."
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+
+  if(UNIX)
+    find_program(TERMINALC_EXPECT_EXECUTABLE expect)
+    if(TERMINALC_EXPECT_EXECUTABLE)
+      add_test(NAME repl_ctrl_c
+        COMMAND "${TERMINALC_EXPECT_EXECUTABLE}"
+          -f "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_ctrl_c.exp"
+          "$<TARGET_FILE:terminalc>")
+    endif()
+  endif()
 
   add_test(NAME help_topics_index
     COMMAND ${CMAKE_COMMAND}
@@ -251,6 +365,15 @@ if(BUILD_TESTING)
       "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/precision.input"
       "-DTERMINALC_EXPECT=Precision set to 5"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+
+  add_test(NAME config_startup
+    COMMAND ${CMAKE_COMMAND}
+      "-DTERMINALC_EXE=$<TARGET_FILE:terminalc>"
+      "-DTERMINALC_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/config.input"
+      "-DTERMINALC_EXPECT=0.999847695"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_repl_expect.cmake")
+  set_tests_properties(config_startup PROPERTIES
+    ENVIRONMENT "TERMINALC_CONFIG=${CMAKE_CURRENT_SOURCE_DIR}/tests/config.rc;TERMINALC_HISTORY_FILE=")
 
   add_test(NAME bool_repl_session
     COMMAND ${CMAKE_COMMAND}

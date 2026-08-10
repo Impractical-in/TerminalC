@@ -496,6 +496,14 @@ bool terminalc_series_sum_expr(TerminalCCalc *c, const char *expr, long lo,
     terminalc_value_init(&saved_x, c->bits);
     terminalc_value_copy(&saved_x, &c->x);
     for (long k = lo;; k++) {
+        if (terminalc_interrupt_requested()) {
+            terminalc_fail(c, "calculation interrupted by Ctrl-C");
+            terminalc_value_copy(&c->x, &saved_x);
+            terminalc_value_clear(&saved_x);
+            mpfr_clear(s);
+            mpfr_clear(y);
+            return false;
+        }
         c->x.type = TERMINALC_RAT;
         mpq_set_si(c->x.q, k, 1);
         TerminalCValue v;

@@ -431,6 +431,12 @@ static bool set_ramanujan_pi_result(TerminalCCalc *c, TerminalCValue *out)
 
     bool converged = false;
     for (unsigned long k = 1; k <= max_terms; k++) {
+        if (terminalc_interrupt_requested()) {
+            mpfr_clears(sum, factorial_term, term, ratio, linear, base_pow4,
+                        prefactor, sqrt2, reciprocal, result, (mpfr_ptr)0);
+            terminalc_fail(c, "calculation interrupted by Ctrl-C");
+            return false;
+        }
         unsigned long four_k = 4UL * k;
         mpfr_set_ui(ratio, 1, MPFR_RNDN);
         mpfr_mul_ui(ratio, ratio, four_k - 3, MPFR_RNDN);
@@ -784,6 +790,9 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
     /* Only hex/bin/oct/base keep a non-decimal print base. */
     c->out_base = 0;
 
+    if (terminalc_signal_call(c, n, args, count, &o))
+        goto done_clear;
+
     if (count == 1 && args[0].type == TERMINALC_TENSOR &&
         tensor_unary_supported(n)) {
         (void)tensor_unary_apply(c, n, &args[0], &o);
@@ -1076,6 +1085,7 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
                 mpfr_init2(t, c->bits);
                 degrees_to_rad(c, t, &args[0]);
                 o.type = TERMINALC_REAL;
+                o.display_decimal = true;
                 mpfr_sin(o.r, t, MPFR_RNDN);
                 mpfr_clear(t);
             } else {
@@ -1091,6 +1101,7 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
                 mpfr_init2(t, c->bits);
                 degrees_to_rad(c, t, &args[0]);
                 o.type = TERMINALC_REAL;
+                o.display_decimal = true;
                 mpfr_cos(o.r, t, MPFR_RNDN);
                 mpfr_clear(t);
             } else {
@@ -1106,6 +1117,7 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
                 mpfr_init2(t, c->bits);
                 degrees_to_rad(c, t, &args[0]);
                 o.type = TERMINALC_REAL;
+                o.display_decimal = true;
                 mpfr_tan(o.r, t, MPFR_RNDN);
                 mpfr_clear(t);
             } else {
@@ -1161,6 +1173,7 @@ TerminalCValue terminalc_call(TerminalCCalc *c, const char *n, TerminalCValue *a
             mpfr_init2(t, c->bits);
             degrees_to_rad(c, t, &args[0]);
             o.type = TERMINALC_REAL;
+            o.display_decimal = true;
             if (strcmp(n, "sind") == 0)
                 mpfr_sin(o.r, t, MPFR_RNDN);
             else if (strcmp(n, "cosd") == 0)

@@ -45,6 +45,8 @@ bool terminalc_units_div(TerminalCCalc *c, const TerminalCValue *a, const Termin
 /* series.c */
 bool terminalc_series_call(TerminalCCalc *c, const char *n, TerminalCValue *args,
                            size_t count, TerminalCValue *o);
+bool terminalc_signal_call(TerminalCCalc *c, const char *n, TerminalCValue *args,
+                           size_t count, TerminalCValue *o);
 bool terminalc_series_sum_expr(TerminalCCalc *c, const char *expr, long lo,
                                long hi, TerminalCValue *out);
 

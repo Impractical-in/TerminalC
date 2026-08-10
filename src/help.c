@@ -355,12 +355,14 @@ static const TerminalCHelpEntry g_help[] = {
     {
         "plot", NULL, "plot", 1,
         "plot(expr, x=lo..hi)",
-        "Plot y = expr for free variable x (interactive window on Windows).",
+        "Plot y = expr for free variable x (native window on Windows/macOS).",
         "expr - expression in x (also y=... form)\n"
         "lo - range start (expression)\n"
         "hi - range end (must be > lo)",
-        "  plot(sin(x), x=-pi..pi)\n  plot(y=x^2, x=-2..2)",
+        "  plot(sin(x), x=-pi..pi)\n  plot(y=x^2, x=-2..2)\n"
+        "  plot_save(sin(x);cos(x), x=0..2*pi, curves.svg)",
         "Hover curve for (x,y). Wheel zoom, drag pan, Esc close.\n"
+        "plot_save exports one or more semicolon-separated curves to standalone SVG.\n"
         "The x=lo..hi interval is sampled exactly; press 0 to reset after pan/zoom.\n"
         "The y view has a small auto-fit margin. TERMINALC_ASCII_PLOT=1 forces terminal ASCII."
     },
@@ -397,6 +399,21 @@ static const TerminalCHelpEntry g_help[] = {
         "u, v - vectors",
         "  det([1,2;3,4])\n  linsolve(A, b)",
         "See: help matrix"
+    },
+
+    /* ---- signal processing ---- */
+    {
+        "fft", "ifft dft idft real imag", "signal", 1,
+        "fft(vector) | dft(vector)\nifft(complex_tensor) | idft(complex_tensor)\n"
+        "real(signal)\nimag(signal)",
+        "Arbitrary-precision discrete Fourier transforms.",
+        "vector - one-dimensional tensor with at most 4096 scalar samples\n"
+        "complex_tensor - the 2 x N [real; imaginary] tensor returned by fft/ifft",
+        "  fft([1, 0, 0, 0])\n"
+        "  real(fft([1, 2, 3, 4]))\n"
+        "  real(ifft(fft([1, 2, 3, 4])))",
+        "Power-of-two lengths use radix-2 FFT; other lengths use a direct DFT.\n"
+        "Complex values are represented as a 2 x N tensor: row 0 real, row 1 imaginary."
     },
 
     /* ---- solvers / calculus ---- */
@@ -671,6 +688,10 @@ static const TerminalCFunctionGroup g_function_groups[] = {
      "mat(rows, cols, values...)\nshape(tensor)\ntranspose(A)\n"
      "det(A)\ninv(A)\nlinsolve(A, b)\ndot(u, v)\n"
      "tensor + - * / scalar broadcast"},
+    {"Signal processing",
+     "fft(vector) | dft(vector)\nifft(complex_tensor) | idft(complex_tensor)\n"
+     "real(signal)\nimag(signal)\n"
+     "Complex vectors use a 2 x N tensor: [real row; imaginary row]."},
     {"Numerical solvers and calculus",
      "solve(expr, guess) | solve(expr, lo, hi)\n"
      "diff(expr, x0)\nintegral(expr, lo, hi)"},

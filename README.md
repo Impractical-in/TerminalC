@@ -26,16 +26,22 @@ terminalc --eval "1/3+2/7"
 - Fibonacci: `fib(n)`, fast `fibn(n)`
 - Stable quadratic solver: `solve_quadratic(1, -3, 2)`
 - Exact-coefficient polynomials: `p = poly([1, -3, 2])`, `degree`, `evaluate`, `derivative`, `roots`
-- Interactive plots: `plot(sin(x), x=-2*pi..2*pi)` — **Win32 popup** with real
+- Interactive plots: `plot(sin(x), x=-2*pi..2*pi)` — **Windows/macOS native popup** with real
   vector lines, wheel zoom / drag pan (no extra graphics library); ASCII fallback
+- SVG plot export: `plot_save(sin(x);cos(x), x=0..2*pi, curves.svg)` for reports and notebooks
+- Persistent REPL history with `history`, `!!`, numbered `!N` replay, and arrow-key editing
 - Matrices/tensors (1D–4D): `[1,2;3,4]`, `eye`, `zeros`, scalar broadcasting,
   element-wise unary math,
   `det`, `inv`, `linsolve`
+- Signal processing: arbitrary-precision `fft`/`ifft` with `dft`/`idft` aliases;
+  complex vectors use `[real; imaginary]` tensors and support `real`/`imag`
 - Numeric `solve` / `diff` / `integral` (free variable `x`)
 - Units: `5*km`, `to(qty, unit)`; mensuration: `square.area(4)`, `sphere.volume(r)`, …
-- Booleans, `help <topic>`, 715 regression and robustness tests
+- Booleans, `help <topic>`, and a 700+ case regression/sanitizer suite
 - Optional ANSI color for algebra / plot segments (auto-disabled for pipes / `NO_COLOR`)
 - Machine-readable `--format json|csv` output for CI and data pipelines
+- Plot data export to CSV, startup configuration via `~/.terminalcrc`, and
+  Ctrl-D/Ctrl-L/Ctrl-R REPL shortcuts
 - Interactive REPL and `.tc` automation scripts via `--script`
 
 ## MVP and use cases
@@ -63,11 +69,29 @@ portable plots, documented functions, and a self-contained release archive.
 
 ## Portable installation
 
-Release ZIP archives contain `terminalc.exe`, the required GMP/MPFR/runtime DLLs,
-the public header, examples, license, and full usage documentation. Extract the
-archive and run `bin/terminalc.exe`; no MSYS2 installation or PATH editing is
-required. The CMake install target and CPack ZIP generator produce the same
-layout for local builds.
+Release artifacts contain a native `terminalc` executable, the public header,
+examples, license, and full usage documentation. Windows archives also include
+the required GMP/MPFR/runtime DLLs, so they can be extracted and run without
+MSYS2 or PATH editing. CPack produces a macOS ZIP/PKG, Windows ZIP/NSIS
+installer, and Linux DEB/TGZ package; see [packaging/README.md](packaging/README.md).
+
+### macOS installation
+
+TerminalC supports Apple Silicon and Intel macOS builds through Homebrew:
+
+```sh
+brew install cmake ninja gmp mpfr
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$(brew --prefix gmp);$(brew --prefix mpfr)"
+cmake --build build --parallel
+./build/terminalc --version
+```
+
+On an interactive Terminal session, `plot(...)` opens a native Cocoa window
+with wheel zoom, drag-to-pan, hover readouts, and keyboard shortcuts. Set
+`TERMINALC_ASCII_PLOT=1` to force the terminal renderer, which is also used
+automatically for pipes and scripts.
 
 ## Project layout
 
@@ -100,9 +124,11 @@ Only two libraries (already used by TerminalC):
 | **GMP** | Exact integers / rationals (`gcd`, `lcm`, base conversion, factorials, …) |
 | **MPFR** | Arbitrary-precision reals, trig, roots, logs, plot sampling |
 | **Win32 GDI** (Windows only) | Interactive plot window (`gdi32` / `user32` — ship with the OS) |
+| **Cocoa** (macOS only) | Interactive plot window (ships with macOS) |
 
-No third-party render software (no gnuplot, SDL, Cairo, Qt). Plots use system GDI
-for real lines + zoom; non-Windows / pipes use the ASCII terminal plot.
+No third-party render software (no gnuplot, SDL, Cairo, Qt). Plots use the
+system windowing API for real lines + zoom; other platforms, pipes, and scripts
+use the ASCII terminal plot.
 
 **MSYS2 MinGW64 packages:** `mingw-w64-x86_64-gmp`, `mingw-w64-x86_64-mpfr`
 (plus a C toolchain / CMake). Make them CMake-discoverable via `CMAKE_PREFIX_PATH`.
@@ -117,10 +143,20 @@ terminalc --eval "sqrt(2)"
 ```
 
 Building from source still requires a C compiler, CMake, GMP, and MPFR. Release
-CI should publish platform-specific wheels with matching native libraries; on
+CI is prepared to publish platform-specific wheels with matching native libraries; on
 Windows, do not mix a UCRT compiler with MSVCRT-built GMP/MPFR (use one MinGW
 runtime family consistently). `TERMINALC_NATIVE` can point the Python shim at a
 local executable while developing.
+
+## Build (macOS)
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$(brew --prefix gmp);$(brew --prefix mpfr)"
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+cpack --config build/CPackConfig.cmake -G productbuild  # unsigned preview .pkg
+```
 
 ## Build (MSYS2 MinGW64)
 
@@ -131,8 +167,9 @@ cmake -S . -B build -G "MinGW Makefiles" \
   -DCMAKE_PREFIX_PATH=/mingw64
 cmake --build build
 ./build/terminalc.exe --help
-ctest --test-dir build --output-on-failure   # 715 regression/robustness tests
-cpack --config build/CPackConfig.cmake       # portable ZIP release archive
+ctest --test-dir build --output-on-failure   # 700+ regression/robustness tests
+cpack --config build/CPackConfig.cmake -G ZIP            # portable archive
+cpack --config build/CPackConfig.cmake -G NSIS           # Windows installer
 ```
 
 Regression tests live in **`tests/eval_catalog.tsv`** (bulk `--eval` cases) plus REPL
@@ -165,6 +202,8 @@ Use `help <name>` for each function's arguments, examples, aliases, and limits.
 See **[docs/USAGE.md](docs/USAGE.md)** for the complete command reference.
 See **[docs/FUNCTIONS.md](docs/FUNCTIONS.md)** for the complete function API,
 including every argument, example, alias, and safety limit.
+See **[packaging/README.md](packaging/README.md)** for the pip, Homebrew,
+macOS installer, Windows installer, and Linux package roadmap.
 
 ## Design notes
 
@@ -172,7 +211,9 @@ including every argument, example, alias, and safety limit.
   pointers that become empty when disabled (no runtime formatting cost).
 - **Exact when possible**: rationals stay `mpq` until a real operation forces promotion.
 - **Clean architecture**: public header + focused translation units; single `terminalc` executable.
-- **Packaging**: calculation core stays native; `scikit-build-core` is prepared for wheels later.
+- **Packaging**: calculation core stays native; `scikit-build-core`, CPack,
+  Homebrew, and manual/tag-driven package workflows keep distribution paths
+  reproducible without running signing or publishing credentials on PRs.
 
 ## License
 

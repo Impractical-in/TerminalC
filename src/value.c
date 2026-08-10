@@ -13,6 +13,7 @@ void terminalc_value_init(TerminalCValue *v, mpfr_prec_t bits)
 {
     v->type = TERMINALC_RAT;
     v->b = false;
+    v->display_decimal = false;
     v->ten = NULL;
     v->unit_id = -1;
     mpq_init(v->q);
@@ -28,6 +29,7 @@ void terminalc_value_clear(TerminalCValue *v)
     mpq_clear(v->q);
     mpfr_clear(v->r);
     v->b = false;
+    v->display_decimal = false;
     v->unit_id = -1;
     v->type = TERMINALC_RAT;
 }
@@ -40,6 +42,7 @@ void terminalc_value_set_q(TerminalCValue *v, const mpq_t q)
     }
     v->type = TERMINALC_RAT;
     v->b = false;
+    v->display_decimal = false;
     v->unit_id = -1;
     mpq_set(v->q, q);
     mpq_canonicalize(v->q);
@@ -53,6 +56,7 @@ void terminalc_value_set_si(TerminalCValue *v, long n)
     }
     v->type = TERMINALC_RAT;
     v->b = false;
+    v->display_decimal = false;
     v->unit_id = -1;
     mpq_set_si(v->q, n, 1);
 }
@@ -65,6 +69,7 @@ void terminalc_value_set_r(TerminalCValue *v, const mpfr_t r)
     }
     v->type = TERMINALC_REAL;
     v->b = false;
+    v->display_decimal = false;
     v->unit_id = -1;
     mpfr_set(v->r, r, MPFR_RNDN);
 }
@@ -77,6 +82,7 @@ void terminalc_value_set_bool(TerminalCValue *v, bool b)
     }
     v->type = TERMINALC_BOOL;
     v->b = b;
+    v->display_decimal = false;
     v->unit_id = -1;
 }
 
@@ -84,9 +90,10 @@ void terminalc_value_copy(TerminalCValue *dst, const TerminalCValue *src)
 {
     if (src->type == TERMINALC_RAT)
         terminalc_value_set_q(dst, src->q);
-    else if (src->type == TERMINALC_REAL)
+    else if (src->type == TERMINALC_REAL) {
         terminalc_value_set_r(dst, src->r);
-    else if (src->type == TERMINALC_BOOL)
+        dst->display_decimal = src->display_decimal;
+    } else if (src->type == TERMINALC_BOOL)
         terminalc_value_set_bool(dst, src->b);
     else if (src->type == TERMINALC_MEASURE) {
         if (dst->type == TERMINALC_TENSOR && dst->ten) {
@@ -96,6 +103,7 @@ void terminalc_value_copy(TerminalCValue *dst, const TerminalCValue *src)
         dst->type = TERMINALC_MEASURE;
         dst->unit_id = src->unit_id;
         dst->b = false;
+        dst->display_decimal = false;
         mpq_set(dst->q, src->q);
         mpfr_set(dst->r, src->r, MPFR_RNDN);
     } else if (src->type == TERMINALC_TENSOR && src->ten) {
@@ -212,14 +220,56 @@ static void print_plain_mpz(const mpz_t z)
     }
 }
 
-static void print_decimal_real(const TerminalCCalc *c, const mpfr_t r)
+static bool print_decimal_real_mode(const TerminalCCalc *c, const mpfr_t r,
+                                    bool preserve_noninteger_boundary)
 {
     /* True zeros stay "0" — precision does not invent 0.000… */
     if (mpfr_zero_p(r) || rounds_to_display_zero(r, c->digits)) {
         print_plain_zero();
-        return;
+        return false;
     }
+
+    if (preserve_noninteger_boundary) {
+        mpfr_t nearest, unit, half_unit, distance, adjusted;
+        mpfr_inits2(c->bits, nearest, unit, half_unit, distance, adjusted,
+                    (mpfr_ptr)0);
+        mpfr_round(nearest, r);
+        mpfr_set_si(unit, -c->digits, MPFR_RNDN);
+        mpfr_exp10(unit, unit, MPFR_RNDN);
+        mpfr_div_ui(half_unit, unit, 2, MPFR_RNDN);
+        mpfr_sub(distance, nearest, r, MPFR_RNDN);
+        bool at_integer = mpfr_zero_p(distance);
+        bool close_below = mpfr_cmp_ui(distance, 0) > 0 &&
+                           mpfr_cmp(distance, half_unit) <= 0;
+        bool close_above = mpfr_cmp_ui(distance, 0) < 0 &&
+                           mpfr_cmpabs(distance, half_unit) <= 0;
+        if (at_integer || close_below || close_above) {
+            mpfr_set(adjusted, nearest, MPFR_RNDN);
+            if (at_integer || close_below)
+                mpfr_sub(adjusted, adjusted, unit, MPFR_RNDN);
+            else
+                mpfr_add(adjusted, adjusted, unit, MPFR_RNDN);
+            mpfr_printf("%s%.*RNf%s\n", C_B_GRN, c->digits, adjusted, C_RST);
+            mpfr_clears(nearest, unit, half_unit, distance, adjusted,
+                        (mpfr_ptr)0);
+            return true;
+        }
+        mpfr_clears(nearest, unit, half_unit, distance, adjusted,
+                    (mpfr_ptr)0);
+    }
+
     mpfr_printf("%s%.*RNf%s\n", C_B_GRN, c->digits, r, C_RST);
+    return false;
+}
+
+static void print_decimal_real(const TerminalCCalc *c, const mpfr_t r)
+{
+    print_decimal_real_mode(c, r, false);
+}
+
+static bool print_decimal_real_boundary(const TerminalCCalc *c, const mpfr_t r)
+{
+    return print_decimal_real_mode(c, r, true);
 }
 
 /* True if s is an optional sign + decimal digits only (no slash / radical). */
@@ -238,15 +288,30 @@ static bool is_plain_integer_str(const char *s)
     return true;
 }
 
-/* Relative tolerance for nice-form matching: ~ half a unit in the last display digit. */
+/* Tolerance for display-level nice-form matching: half a unit in the last digit. */
 static void set_match_tol(mpfr_t tol, int digits, mpfr_prec_t bits)
 {
     (void)bits;
-    int d = digits > 2 ? digits - 1 : digits;
+    int d = digits > 0 ? digits : 1;
     if (d > 40)
         d = 40; /* avoid pathological false matches at huge precision */
     mpfr_set_si(tol, -d, MPFR_RNDN);
     mpfr_exp10(tol, tol, MPFR_RNDN);
+    mpfr_div_ui(tol, tol, 2, MPFR_RNDN);
+}
+
+/* Tighter tolerance for recovering a genuine rational or closed form. */
+static void set_recovery_tol(mpfr_t tol, int digits, mpfr_prec_t bits)
+{
+    (void)bits;
+    int d = digits + 4;
+    if (d < 1)
+        d = 1;
+    if (d > 40)
+        d = 40;
+    mpfr_set_si(tol, -d, MPFR_RNDN);
+    mpfr_exp10(tol, tol, MPFR_RNDN);
+    mpfr_div_ui(tol, tol, 2, MPFR_RNDN);
 }
 
 static bool nearly_equal(const mpfr_t a, const mpfr_t b, const mpfr_t tol)
@@ -389,7 +454,7 @@ static bool try_nice_form(const TerminalCCalc *c, const mpfr_t x, char *buf, siz
     mpfr_init2(cand, c->bits);
     mpfr_init2(s, c->bits);
     mpfr_init2(tmp, c->bits);
-    set_match_tol(tol, c->digits, c->bits);
+    set_recovery_tol(tol, c->digits, c->bits);
 
     /* Exact / display zero */
     if (rounds_to_display_zero(x, c->digits) || mpfr_zero_p(x)) {
@@ -400,13 +465,13 @@ static bool try_nice_form(const TerminalCCalc *c, const mpfr_t x, char *buf, siz
 
     /* ±1 */
     mpfr_set_si(cand, 1, MPFR_RNDN);
-    if (nearly_equal(x, cand, tol)) {
+    if (mpfr_integer_p(x) && mpfr_cmp_ui(x, 1) == 0) {
         snprintf(buf, buflen, "1");
         mpfr_clears(tol, cand, s, tmp, (mpfr_ptr)0);
         return true;
     }
     mpfr_set_si(cand, -1, MPFR_RNDN);
-    if (nearly_equal(x, cand, tol)) {
+    if (mpfr_integer_p(x) && mpfr_cmp_si(x, -1) == 0) {
         snprintf(buf, buflen, "-1");
         mpfr_clears(tol, cand, s, tmp, (mpfr_ptr)0);
         return true;
@@ -416,13 +481,15 @@ static bool try_nice_form(const TerminalCCalc *c, const mpfr_t x, char *buf, siz
     mpq_t q;
     mpq_init(q);
     if (rat_from_real(x, q, 10000UL, tol)) {
-        char *t = mpq_get_str(NULL, 10, q);
-        if (t) {
-            snprintf(buf, buflen, "%s", t);
-            free(t);
-            mpq_clear(q);
-            mpfr_clears(tol, cand, s, tmp, (mpfr_ptr)0);
-            return true;
+        if (mpz_cmp_ui(mpq_denref(q), 1) != 0 || mpfr_integer_p(x)) {
+            char *t = mpq_get_str(NULL, 10, q);
+            if (t) {
+                snprintf(buf, buflen, "%s", t);
+                free(t);
+                mpq_clear(q);
+                mpfr_clears(tol, cand, s, tmp, (mpfr_ptr)0);
+                return true;
+            }
         }
     }
     mpq_clear(q);
@@ -841,6 +908,15 @@ void terminalc_print_value(TerminalCCalc *c, const TerminalCValue *v)
 
     /* REAL — prefer integer / fraction / radical; precision only for decimals. */
 
+    if (v->display_decimal) {
+        bool carry_suppressed = print_decimal_real_boundary(c, v->r);
+        printf("%s[%d digits, %s]%s\n", C_DIM, c->digits,
+               carry_suppressed ? "nearest; non-integer carry suppressed"
+                                : "round-to-nearest",
+               C_RST);
+        return;
+    }
+
     /* 1) Integer-valued reals (e.g. log(1000) → 3). */
     {
         mpz_t zi;
@@ -857,7 +933,7 @@ void terminalc_print_value(TerminalCCalc *c, const TerminalCValue *v)
     {
         mpfr_t tol;
         mpfr_init2(tol, c->bits);
-        set_match_tol(tol, c->digits, c->bits);
+        set_recovery_tol(tol, c->digits, c->bits);
         mpq_t q;
         mpq_init(q);
         /* Allow larger denominators when more digits are requested. */
@@ -873,7 +949,12 @@ void terminalc_print_value(TerminalCCalc *c, const TerminalCValue *v)
         }
         if (rat_from_real(v->r, q, max_den, tol)) {
             if (mpz_cmp_ui(mpq_denref(q), 1) == 0) {
-                print_plain_mpz(mpq_numref(q));
+                if (mpfr_integer_p(v->r)) {
+                    print_plain_mpz(mpq_numref(q));
+                    mpq_clear(q);
+                    mpfr_clear(tol);
+                    return;
+                }
             } else {
                 /* Higher-precision check: Exact only if still matches tighter tol */
                 mpfr_t tight, cand;
@@ -891,10 +972,10 @@ void terminalc_print_value(TerminalCCalc *c, const TerminalCValue *v)
                 }
                 mpfr_clear(tight);
                 mpfr_clear(cand);
+                mpq_clear(q);
+                mpfr_clear(tol);
+                return;
             }
-            mpq_clear(q);
-            mpfr_clear(tol);
-            return;
         }
         mpq_clear(q);
         mpfr_clear(tol);

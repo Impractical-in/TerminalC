@@ -7,6 +7,9 @@
 /wheel_smoke_*/
 /TerminalC-*.zip
 /_CPack_Packages/
+/validation-results/
+/validation-archives/
+*.age
 *.o
 *.obj
 *.a

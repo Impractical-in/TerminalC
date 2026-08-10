@@ -7,7 +7,412 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { TERMINALC_FIB_LIST_MAX = 10000, TERMINALC_FIB_INDEX_MAX = 10000000 };
+#ifdef _WIN32
+#include <conio.h>
+#include <io.h>
+#define TERMINALC_REPL_ISATTY(fd) (_isatty(fd) != 0)
+#define TERMINALC_REPL_FILENO(stream) _fileno(stream)
+#else
+#include <termios.h>
+#include <unistd.h>
+#define TERMINALC_REPL_ISATTY(fd) (isatty(fd) != 0)
+#define TERMINALC_REPL_FILENO(stream) fileno(stream)
+#endif
+
+enum {
+    TERMINALC_FIB_LIST_MAX = 10000,
+    TERMINALC_FIB_INDEX_MAX = 10000000,
+    TERMINALC_HISTORY_MAX = 100
+};
+
+typedef struct {
+    char entries[TERMINALC_HISTORY_MAX][TERMINALC_LINE_MAX];
+    size_t count;
+    bool persistent;
+} TerminalCHistory;
+
+static bool history_is_interactive(void)
+{
+    return TERMINALC_REPL_ISATTY(TERMINALC_REPL_FILENO(stdin)) &&
+           TERMINALC_REPL_ISATTY(TERMINALC_REPL_FILENO(stdout));
+}
+
+static const char *history_file_path(void)
+{
+    const char *override = getenv("TERMINALC_HISTORY_FILE");
+    if (override)
+        return override;
+
+    static char path[TERMINALC_LINE_MAX];
+#ifdef _WIN32
+    const char *home = getenv("USERPROFILE");
+    if (!home)
+        home = getenv("HOMEPATH");
+#else
+    const char *home = getenv("HOME");
+#endif
+    if (!home || !home[0])
+        return NULL;
+    snprintf(path, sizeof path, "%s/.terminalc_history", home);
+    return path;
+}
+
+static void history_add(TerminalCHistory *history, const char *line)
+{
+    if (!line || !line[0])
+        return;
+    if (history->count > 0 &&
+        strcmp(history->entries[history->count - 1], line) == 0)
+        return;
+    if (history->count == TERMINALC_HISTORY_MAX) {
+        memmove(history->entries[0], history->entries[1],
+                (TERMINALC_HISTORY_MAX - 1) * sizeof history->entries[0]);
+        history->count--;
+    }
+    snprintf(history->entries[history->count], TERMINALC_LINE_MAX, "%s", line);
+    history->count++;
+}
+
+static void history_load(TerminalCHistory *history)
+{
+    if (!history->persistent)
+        return;
+    const char *path = history_file_path();
+    if (!path || !path[0])
+        return;
+    FILE *fp = fopen(path, "r");
+    if (!fp)
+        return;
+    char line[TERMINALC_LINE_MAX];
+    while (fgets(line, sizeof line, fp)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        history_add(history, line);
+    }
+    fclose(fp);
+}
+
+static void history_save(const TerminalCHistory *history)
+{
+    if (!history->persistent)
+        return;
+    const char *path = history_file_path();
+    if (!path || !path[0])
+        return;
+    FILE *fp = fopen(path, "w");
+    if (!fp)
+        return;
+    for (size_t i = 0; i < history->count; i++)
+        fprintf(fp, "%s\n", history->entries[i]);
+    fclose(fp);
+}
+
+static void history_print(const TerminalCHistory *history)
+{
+    if (history->count == 0) {
+        puts("(history is empty)");
+        return;
+    }
+    for (size_t i = 0; i < history->count; i++)
+        printf("%4zu  %s\n", i + 1, history->entries[i]);
+}
+
+static bool history_expand(const TerminalCHistory *history, char *line, size_t size)
+{
+    if (line[0] != '!')
+        return true;
+    size_t index = 0;
+    if (strcmp(line, "!!") == 0) {
+        if (history->count == 0) {
+            fprintf(stderr, "%sHistory is empty.%s\n", C_B_RED, C_RST);
+            return false;
+        }
+        index = history->count;
+    } else {
+        char *end = NULL;
+        unsigned long requested = strtoul(line + 1, &end, 10);
+        if (end == line + 1 || *end != '\0' || requested == 0 ||
+            requested > history->count) {
+            fprintf(stderr, "%sUnknown history entry '%s'.%s\n", C_B_RED, line,
+                    C_RST);
+            return false;
+        }
+        index = (size_t)requested;
+    }
+    snprintf(line, size, "%s", history->entries[index - 1]);
+    printf("%s%s%s\n", C_DIM, line, C_RST);
+    return true;
+}
+
+static bool handle_history_command(TerminalCHistory *history, char *line)
+{
+    if (strcmp(line, "history") == 0) {
+        history_print(history);
+        return true;
+    }
+    if (strcmp(line, "history clear") == 0) {
+        history->count = 0;
+        history_save(history);
+        puts("History cleared.");
+        return true;
+    }
+    return false;
+}
+
+enum {
+    TERMINALC_REPL_KEY_EOF = -1,
+    TERMINALC_REPL_KEY_NONE = -2,
+    TERMINALC_REPL_KEY_ENTER = -3,
+    TERMINALC_REPL_KEY_BACKSPACE = -4,
+    TERMINALC_REPL_KEY_CANCEL = -5,
+    TERMINALC_REPL_KEY_UP = -6,
+    TERMINALC_REPL_KEY_DOWN = -7,
+    TERMINALC_REPL_KEY_LEFT = -8,
+    TERMINALC_REPL_KEY_RIGHT = -9,
+    TERMINALC_REPL_KEY_HOME = -10,
+    TERMINALC_REPL_KEY_END = -11,
+    TERMINALC_REPL_KEY_CLEAR = -12
+};
+
+static int repl_read_byte(void)
+{
+#ifdef _WIN32
+    return _getch();
+#else
+    unsigned char byte = 0;
+    ssize_t n = read(TERMINALC_REPL_FILENO(stdin), &byte, 1);
+    return n == 1 ? (int)byte : TERMINALC_REPL_KEY_EOF;
+#endif
+}
+
+static int repl_read_key(void)
+{
+    int ch = repl_read_byte();
+    if (ch == TERMINALC_REPL_KEY_EOF)
+        return TERMINALC_REPL_KEY_EOF;
+#ifdef _WIN32
+    if (ch == 0 || ch == 224) {
+        switch (repl_read_byte()) {
+        case 72: return TERMINALC_REPL_KEY_UP;
+        case 80: return TERMINALC_REPL_KEY_DOWN;
+        case 75: return TERMINALC_REPL_KEY_LEFT;
+        case 77: return TERMINALC_REPL_KEY_RIGHT;
+        case 71: return TERMINALC_REPL_KEY_HOME;
+        case 79: return TERMINALC_REPL_KEY_END;
+        default: return TERMINALC_REPL_KEY_NONE;
+        }
+    }
+#else
+    if (ch == 27) {
+        int first = repl_read_byte();
+        if (first == '[' || first == 'O') {
+            switch (repl_read_byte()) {
+            case 'A': return TERMINALC_REPL_KEY_UP;
+            case 'B': return TERMINALC_REPL_KEY_DOWN;
+            case 'C': return TERMINALC_REPL_KEY_RIGHT;
+            case 'D': return TERMINALC_REPL_KEY_LEFT;
+            case 'H': return TERMINALC_REPL_KEY_HOME;
+            case 'F': return TERMINALC_REPL_KEY_END;
+            default: return TERMINALC_REPL_KEY_NONE;
+            }
+        }
+        return TERMINALC_REPL_KEY_NONE;
+    }
+#endif
+    if (ch == '\r' || ch == '\n')
+        return TERMINALC_REPL_KEY_ENTER;
+    if (ch == 8 || ch == 127)
+        return TERMINALC_REPL_KEY_BACKSPACE;
+    if (ch == 12)
+        return TERMINALC_REPL_KEY_CLEAR;
+    if (ch == 18)
+        return TERMINALC_REPL_KEY_UP;
+    if (ch == 3)
+        return TERMINALC_REPL_KEY_CANCEL;
+    if (ch == 4)
+        return TERMINALC_REPL_KEY_EOF;
+    return ch >= 32 ? ch : TERMINALC_REPL_KEY_NONE;
+}
+
+static void repl_print_prompt(void)
+{
+    printf("%scalc>%s ", C_B_CYN, C_RST);
+}
+
+static void repl_redraw_line(const char *line, size_t length, size_t cursor,
+                             size_t *painted)
+{
+    fputc('\r', stdout);
+    repl_print_prompt();
+    if (length > 0)
+        fwrite(line, 1, length, stdout);
+    if (*painted > length) {
+        for (size_t i = length; i < *painted; i++)
+            fputc(' ', stdout);
+        for (size_t i = length; i < *painted; i++)
+            fputc('\b', stdout);
+    }
+    for (size_t i = cursor; i < length; i++)
+        fputc('\b', stdout);
+    fflush(stdout);
+    *painted = length;
+}
+
+#ifndef _WIN32
+static bool repl_begin_raw_input(struct termios *saved)
+{
+    int fd = TERMINALC_REPL_FILENO(stdin);
+    if (tcgetattr(fd, saved) != 0)
+        return false;
+    struct termios raw = *saved;
+    raw.c_lflag &= (tcflag_t)~(ICANON | ECHO | ISIG);
+    raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 0;
+    return tcsetattr(fd, TCSANOW, &raw) == 0;
+}
+
+static void repl_end_raw_input(const struct termios *saved)
+{
+    tcsetattr(TERMINALC_REPL_FILENO(stdin), TCSANOW, saved);
+}
+#endif
+
+static bool repl_read_line(TerminalCHistory *history, char *line, size_t size,
+                           bool *cancelled)
+{
+    *cancelled = false;
+    if (!history->persistent)
+        return fgets(line, size, stdin) != NULL;
+
+#ifndef _WIN32
+    struct termios saved;
+    if (!repl_begin_raw_input(&saved))
+        return fgets(line, size, stdin) != NULL;
+#endif
+
+    char draft[TERMINALC_LINE_MAX];
+    size_t length = 0;
+    size_t cursor = 0;
+    size_t painted = 0;
+    size_t history_cursor = history->count;
+    bool draft_saved = false;
+    line[0] = '\0';
+
+    while (1) {
+        int key = repl_read_key();
+        if (key == TERMINALC_REPL_KEY_ENTER) {
+#ifndef _WIN32
+            repl_end_raw_input(&saved);
+#endif
+            repl_redraw_line(line, length, length, &painted);
+            putchar('\n');
+            line[length] = '\0';
+            return true;
+        }
+        if (key == TERMINALC_REPL_KEY_EOF) {
+#ifndef _WIN32
+            repl_end_raw_input(&saved);
+#endif
+            if (length == 0) {
+                putchar('\n');
+                return false;
+            }
+            repl_redraw_line(line, length, length, &painted);
+            putchar('\n');
+            line[length] = '\0';
+            return true;
+        }
+        if (key == TERMINALC_REPL_KEY_CANCEL) {
+#ifndef _WIN32
+            repl_end_raw_input(&saved);
+#endif
+            repl_redraw_line("", 0, 0, &painted);
+            puts("^C");
+            line[0] = '\0';
+            *cancelled = true;
+            return true;
+        }
+
+        if (key == TERMINALC_REPL_KEY_CLEAR) {
+            fputs("\033[2J\033[H", stdout);
+            repl_redraw_line(line, length, cursor, &painted);
+            continue;
+        }
+
+        if (key == TERMINALC_REPL_KEY_UP) {
+            if (history_cursor == history->count) {
+                snprintf(draft, sizeof draft, "%s", line);
+                draft_saved = true;
+            }
+            if (history_cursor > 0) {
+                history_cursor--;
+                snprintf(line, size, "%s", history->entries[history_cursor]);
+                length = strlen(line);
+                cursor = length;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_DOWN) {
+            if (history_cursor < history->count) {
+                history_cursor++;
+                if (history_cursor == history->count) {
+                    snprintf(line, size, "%s", draft_saved ? draft : "");
+                } else {
+                    snprintf(line, size, "%s", history->entries[history_cursor]);
+                }
+                length = strlen(line);
+                cursor = length;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_LEFT) {
+            if (cursor > 0) {
+                cursor--;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_RIGHT) {
+            if (cursor < length) {
+                cursor++;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_HOME) {
+            cursor = 0;
+            repl_redraw_line(line, length, cursor, &painted);
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_END) {
+            cursor = length;
+            repl_redraw_line(line, length, cursor, &painted);
+            continue;
+        }
+        if (key == TERMINALC_REPL_KEY_BACKSPACE) {
+            if (cursor > 0) {
+                memmove(line + cursor - 1, line + cursor, length - cursor + 1);
+                cursor--;
+                length--;
+                history_cursor = history->count;
+                draft_saved = false;
+                repl_redraw_line(line, length, cursor, &painted);
+            }
+            continue;
+        }
+        if (key >= 32 && key < 127 && length + 1 < size) {
+            memmove(line + cursor + 1, line + cursor, length - cursor + 1);
+            line[cursor] = (char)key;
+            cursor++;
+            length++;
+            history_cursor = history->count;
+            draft_saved = false;
+            repl_redraw_line(line, length, cursor, &painted);
+        }
+    }
+}
 
 static void trim_inplace(char *s)
 {
@@ -19,6 +424,17 @@ static void trim_inplace(char *s)
     size_t n = strlen(s);
     while (n > 0 && isspace((unsigned char)s[n - 1]))
         s[--n] = '\0';
+}
+
+static bool line_equals_ci(const char *a, const char *b)
+{
+    while (*a && *b) {
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b))
+            return false;
+        a++;
+        b++;
+    }
+    return *a == '\0' && *b == '\0';
 }
 
 static void strip_script_comment(char *s)
@@ -122,6 +538,10 @@ static void print_repl_help(void)
     puts("  angle radians|degrees     Trigonometric mode");
     puts("  vars                      List user variables");
     puts("  clear_vars                Clear user variables");
+    puts("  history [clear]           Show or clear persistent command history");
+    puts("  !! / !N                   Replay the last or numbered history entry");
+    puts("  Up/Down arrows            Browse history; Left/Right edit the line");
+    puts("  Ctrl-C                    Cancel input; press twice at an empty prompt to exit");
     puts("  color on|off              Toggle ANSI color output");
     puts("  advanced on|off           Time / memory / output-size stats");
     puts("");
@@ -139,6 +559,7 @@ static void print_repl_help(void)
     puts("Sequences:   fib(n)  fibn(n)");
     puts("Matrices:    [1,2;3,4]  eye(n) zeros(...) ones(...) mat(...)");
     puts("             det inv transpose linsolve dot shape");
+    puts("Signal:      fft/ifft (2 x N complex tensors) real(...) imag(...)");
     puts("Solve/calc:  solve(expr,guess|lo,hi)  diff(expr,x0)  integral(expr,a,b)");
     puts("Units:       5*km  to(qty, unit)  mag(qty)   (m km kg mg ha acre ...)");
     puts("Mensuration: square.area(s)  circle.area(r)  sphere.volume(r) ...");
@@ -149,7 +570,8 @@ static void print_repl_help(void)
     puts("  solve_quadratic(a, b, c)");
     puts("  p = poly([a, b, c, ...])   exact rational coefficients");
     puts("  degree(p)  evaluate(p, x)  derivative(p)  roots(p)");
-    puts("  plot(expr, x=lo..hi)      interactive window (real lines + zoom)");
+    puts("  plot(expr, x=lo..hi)      native window on Windows/macOS; ASCII fallback");
+    puts("  plot_save(exprs, x=lo..hi, file.svg|file.csv)  export curves/data");
     puts("Type: help topics   or   help square / help matrix / help units");
 }
 
@@ -192,6 +614,15 @@ static bool handle_line(TerminalCCalc *c, char *line)
     if (strcmp(line, "quit") == 0 || strcmp(line, "exit") == 0 ||
         strcmp(line, ":q") == 0)
         return false;
+
+    if (line_equals_ci(line, "hi")) {
+        puts("Hi there! Welcome to TerminalC.");
+        return true;
+    }
+    if (line_equals_ci(line, "bye")) {
+        puts("Bye! Thanks for using TerminalC.");
+        return false;
+    }
 
     if (strcmp(line, "help") == 0 || strcmp(line, "?") == 0 ||
         strcmp(line, ":help") == 0) {
@@ -506,6 +937,71 @@ static bool handle_line(TerminalCCalc *c, char *line)
         return true;
     }
 
+    if (strncmp(line, "plot_save(", 10) == 0) {
+        /* plot_save(expr; expr, x=lo..hi, file.svg) */
+        char *end = strrchr(line, ')');
+        char *range = NULL;
+        for (char *p = line + 10; *p; p++) {
+            if (*p != ',')
+                continue;
+            char *q = p + 1;
+            while (isspace((unsigned char)*q))
+                q++;
+            if ((q[0] == 'x' || q[0] == 'X')) {
+                char *e = q + 1;
+                while (isspace((unsigned char)*e))
+                    e++;
+                if (*e == '=') {
+                    range = p;
+                    break;
+                }
+            }
+        }
+        char *dots = range ? strstr(range, "..") : NULL;
+        char *file_sep = dots ? strchr(dots + 2, ',') : NULL;
+        if (range && dots && file_sep && end && end > file_sep) {
+            *range = '\0';
+            *dots = '\0';
+            *file_sep = '\0';
+            *end = '\0';
+            char *xeq = range + 1;
+            while (isspace((unsigned char)*xeq))
+                xeq++;
+            xeq++;
+            while (isspace((unsigned char)*xeq))
+                xeq++;
+            if (*xeq == '=')
+                xeq++;
+            while (isspace((unsigned char)*xeq))
+                xeq++;
+            char *hi = dots + 2;
+            while (isspace((unsigned char)*hi))
+                hi++;
+            char *path = file_sep + 1;
+            while (isspace((unsigned char)*path))
+                path++;
+            size_t path_len = strlen(path);
+            if (path_len >= 2 &&
+                ((path[0] == '"' && path[path_len - 1] == '"') ||
+                 (path[0] == '\'' && path[path_len - 1] == '\''))) {
+                path[path_len - 1] = '\0';
+                path++;
+            }
+            const char *extension = strrchr(path, '.');
+            if (extension && strcmp(extension, ".csv") == 0)
+                terminalc_plot_csv(c, line + 10, xeq, hi, path);
+            else
+                terminalc_plot_svg(c, line + 10, xeq, hi, path);
+        } else {
+            fprintf(stderr,
+                    "%sUse: plot_save(expr; expr, x=lo..hi, file.svg)%s\n"
+                    "%s  example: plot_save(sin(x); cos(x), x=0..2*pi, curves.svg)%s\n",
+                    C_B_RED, C_RST, C_DIM, C_RST);
+            mark_script_error(c, "invalid plot export syntax");
+        }
+        return true;
+    }
+
     if (strncmp(line, "plot(", 5) == 0) {
         /* plot(expr, x=lo..hi)  — allows spaces around x= and y=expr form */
         char *end = strrchr(line, ')');
@@ -551,8 +1047,10 @@ static bool handle_line(TerminalCCalc *c, char *line)
                     "%sUse: plot(expr, x=lo..hi)%s\n"
                     "%s  examples: plot(x, x=0..2)%s\n"
                     "%s            plot(y=x, x=0..2)%s\n"
-                    "%s            plot(sin(x), x=-pi..pi)%s\n",
-                    C_B_RED, C_RST, C_DIM, C_RST, C_DIM, C_RST, C_DIM, C_RST);
+                    "%s            plot(sin(x), x=-pi..pi)%s\n"
+                    "%s            plot_save(sin(x);cos(x), x=0..2*pi, curves.svg)%s\n",
+                    C_B_RED, C_RST, C_DIM, C_RST, C_DIM, C_RST, C_DIM, C_RST,
+                    C_DIM, C_RST);
             mark_script_error(c, "invalid plot syntax");
         }
         return true;
@@ -599,6 +1097,13 @@ static bool handle_line(TerminalCCalc *c, char *line)
     if (terminalc_eval(c, rhs, &v)) {
         if (c->advanced)
             terminalc_adv_end(c, &v, &adv);
+        if (terminalc_interrupt_requested()) {
+            fprintf(stderr, "%sCalculation interrupted by Ctrl-C.%s\n", C_B_YEL,
+                    C_RST);
+            terminalc_clear_interrupt();
+            terminalc_value_clear(&v);
+            return true;
+        }
         if (has_assign) {
             if (!assign_var(c, name, &v)) {
                 terminalc_value_clear(&v);
@@ -626,6 +1131,11 @@ static bool handle_line(TerminalCCalc *c, char *line)
 int terminalc_repl(TerminalCCalc *c)
 {
     char line[TERMINALC_LINE_MAX];
+    TerminalCHistory history;
+    bool ctrl_c_pending = false;
+    memset(&history, 0, sizeof history);
+    history.persistent = history_is_interactive();
+    history_load(&history);
 
     printf("%sTerminalC %s%s - arbitrary-precision terminal calculator\n",
            C_B_CYN, TERMINALC_VERSION_STRING, C_RST);
@@ -634,13 +1144,33 @@ int terminalc_repl(TerminalCCalc *c)
            C_DIM, c->digits, C_B_CYN, C_DIM, C_B_CYN, C_DIM, C_RST);
 
     while (1) {
-        printf("%scalc>%s ", C_B_CYN, C_RST);
+        terminalc_clear_interrupt();
+        repl_print_prompt();
         fflush(stdout);
-        if (!fgets(line, sizeof line, stdin)) {
+        bool cancelled = false;
+        if (!repl_read_line(&history, line, sizeof line, &cancelled)) {
             putchar('\n');
             break;
         }
+        if (cancelled) {
+            if (ctrl_c_pending) {
+                putchar('\n');
+                break;
+            }
+            ctrl_c_pending = true;
+            continue;
+        }
+        ctrl_c_pending = false;
         line[strcspn(line, "\r\n")] = '\0';
+        trim_inplace(line);
+        if (!line[0])
+            continue;
+        if (handle_history_command(&history, line))
+            continue;
+        if (!history_expand(&history, line, sizeof line))
+            continue;
+        history_add(&history, line);
+        history_save(&history);
         if (!handle_line(c, line))
             break;
     }
@@ -684,6 +1214,13 @@ int terminalc_run_script(TerminalCCalc *c, const char *path)
         c->error_pos = 0;
         if (!handle_line(c, line))
             break;
+        if (terminalc_interrupt_requested()) {
+            fprintf(stderr, "%sCalculation interrupted by Ctrl-C.%s\n", C_B_YEL,
+                    C_RST);
+            terminalc_clear_interrupt();
+            rc = 130;
+            break;
+        }
         if (c->error) {
             fprintf(stderr, "%sScript failure at %s:%zu.%s\n",
                     C_B_RED, path, line_no, C_RST);
@@ -732,6 +1269,10 @@ void terminalc_print_help(void)
     puts("  precision [N] | digits N");
     puts("  angle radians|degrees");
     puts("  vars | clear_vars");
+    puts("  history [clear] | !! | !N");
+    puts("  Up/Down arrows browse history; Left/Right edit the current line");
+    puts("  Ctrl-D exit | Ctrl-L clear screen | Ctrl-R recall previous history entry");
+    puts("  Startup config: ~/.terminalcrc (or TERMINALC_CONFIG=FILE)");
     puts("  color on|off");
     puts("  advanced on|off         time / result mem / output size");
     puts("");
@@ -750,6 +1291,7 @@ void terminalc_print_help(void)
     puts("  log2 log1p expm1 cbrt pow ramanujan_pi  min max clamp");
     puts("  abs floor ceil  fact  gcd  lcm  ncr|choose  if");
     puts("  mean variance stddev norm  sigmoid relu sign");
+    puts("  fft/ifft/dft/idft  real(signal)  imag(signal)");
     puts("  hex(n)  bin(n)  oct(n)  base(n, b) | tobase(n, b)   b in 2..36");
     puts("  fib(n)  fibn(n)");
     puts("");
@@ -761,8 +1303,9 @@ void terminalc_print_help(void)
     puts("  solve_quadratic(a, b, c)");
     puts("  p = poly([a, b, c, ...])     exact rational coefficients");
     puts("  degree(p)  evaluate(p, x)  derivative(p)  roots(p)");
-    puts("  plot(expr, x=lower..upper)   interactive window (vector lines)");
-    puts("                               wheel zoom, drag pan; Esc closes");
+    puts("  plot(expr, x=lower..upper)   native window (Windows/macOS) or ASCII");
+    puts("  plot_save(exprs, x=lo..hi, file.svg|file.csv)  plot/data export");
+    puts("                               wheel zoom, drag pan; Esc/q closes");
     puts("                               TERMINALC_ASCII_PLOT=1 -> terminal only");
     puts("");
     puts("EXAMPLES");
@@ -781,6 +1324,7 @@ void terminalc_print_help(void)
     puts("");
     puts("ENVIRONMENT");
     puts("  NO_COLOR                Disable color when set (any value)");
+    puts("  TERMINALC_CONFIG        Startup config path (default ~/.terminalcrc)");
     puts("");
     puts("See README.md and docs/USAGE.md for full documentation.");
     puts("");
